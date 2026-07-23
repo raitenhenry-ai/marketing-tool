@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Short-Form Content Manager</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Short-Form Content Manager</h1>
+    <p class="sub">Upload a long-form video &rarr; it's split into <span id="clip-len">2-minute</span> parts and published every <span id="interval">3 hours</span> to your connected accounts.</p>
+  </header>
+
+  <main>
+    <div id="banner" class="banner hidden"></div>
+
+    <section>
+      <h2>1. Connect accounts</h2>
+      <div class="cards" id="accounts">
+        <div class="card" data-platform="youtube">
+          <div class="card-head"><span class="dot"></span> YouTube</div>
+          <div class="card-status">Loading&hellip;</div>
+          <div class="card-actions"></div>
+        </div>
+        <div class="card" data-platform="instagram">
+          <div class="card-head"><span class="dot"></span> Instagram</div>
+          <div class="card-status">Loading&hellip;</div>
+          <div class="card-actions"></div>
+        </div>
+        <div class="card" data-platform="tiktok">
+          <div class="card-head"><span class="dot"></span> TikTok</div>
+          <div class="card-status">Loading&hellip;</div>
+          <div class="card-actions"></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. Upload a long-form video</h2>
+      <form id="upload-form">
+        <input type="text" id="title" name="title" placeholder="Video title (used in captions)" />
+        <input type="file" id="file" name="video" accept="video/*" required />
+        <button type="submit" id="upload-btn">Upload &amp; split</button>
+        <progress id="upload-progress" class="hidden" max="100" value="0"></progress>
+      </form>
+    </section>
+
+    <section>
+      <h2>3. Clip queue</h2>
+      <div id="videos"></div>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

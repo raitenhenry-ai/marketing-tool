@@ -1,0 +1,20 @@
+{
+  "name": "shortform-manager",
+  "version": "1.0.0",
+  "description": "Short-form content manager: split long-form video into 2-minute clips and auto-publish to YouTube, Instagram and TikTok on a 3-hour schedule.",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.10.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.2"
+  }
+}

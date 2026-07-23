@@ -1,0 +1,140 @@
+const $ = (sel, el = document) => el.querySelector(sel);
+
+const PLATFORM_LABELS = { youtube: "YouTube", instagram: "Instagram", tiktok: "TikTok" };
+
+function showBannerFromQuery() {
+  const params = new URLSearchParams(location.search);
+  const banner = $("#banner");
+  if (params.get("connected")) {
+    banner.textContent = `${PLATFORM_LABELS[params.get("connected")] || "Account"} connected!`;
+    banner.classList.remove("hidden", "error");
+  } else if (params.get("connect_error")) {
+    banner.textContent = `Connection failed: ${params.get("connect_error")}`;
+    banner.classList.remove("hidden");
+    banner.classList.add("error");
+  }
+  if ([...params.keys()].length) history.replaceState(null, "", "/");
+}
+
+async function loadAccounts() {
+  const res = await fetch("/api/accounts");
+  const data = await res.json();
+
+  $("#clip-len").textContent = `${Math.round(data.settings.clipDurationSeconds / 60)}-minute`;
+  $("#interval").textContent = `${data.settings.uploadIntervalHours} hours`;
+
+  for (const [name, info] of Object.entries(data.platforms)) {
+    const card = document.querySelector(`.card[data-platform="${name}"]`);
+    const status = $(".card-status", card);
+    const actions = $(".card-actions", card);
+    card.classList.toggle("connected", Boolean(info.account));
+
+    if (info.account) {
+      status.textContent = `Connected as ${info.account.displayName || "account"}`;
+      actions.innerHTML = `<button class="secondary" data-disconnect="${name}">Disconnect</button>`;
+    } else if (!info.configured) {
+      status.textContent = "API credentials missing (see .env.example)";
+      actions.innerHTML = "";
+    } else {
+      status.textContent = "Not connected";
+      actions.innerHTML = `<a class="btn" href="/auth/${name}">Connect</a>`;
+    }
+  }
+}
+
+document.addEventListener("click", async (e) => {
+  const platform = e.target.dataset?.disconnect;
+  if (!platform) return;
+  await fetch(`/auth/${platform}/disconnect`, { method: "POST" });
+  loadAccounts();
+});
+
+$("#upload-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const file = $("#file").files[0];
+  if (!file) return;
+
+  const form = new FormData();
+  form.append("title", $("#title").value);
+  form.append("video", file);
+
+  const btn = $("#upload-btn");
+  const progress = $("#upload-progress");
+  btn.disabled = true;
+  progress.classList.remove("hidden");
+
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", "/api/videos");
+  xhr.upload.onprogress = (ev) => {
+    if (ev.lengthComputable) progress.value = (ev.loaded / ev.total) * 100;
+  };
+  xhr.onload = xhr.onerror = () => {
+    btn.disabled = false;
+    progress.classList.add("hidden");
+    progress.value = 0;
+    if (xhr.status >= 200 && xhr.status < 300) {
+      $("#upload-form").reset();
+    } else {
+      alert(`Upload failed: ${xhr.responseText || xhr.status}`);
+    }
+    loadVideos();
+  };
+  xhr.send(form);
+});
+
+function fmtTime(ms) {
+  return new Date(ms).toLocaleString([], {
+    month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+  });
+}
+
+function chip(upload) {
+  const label = PLATFORM_LABELS[upload.platform] || upload.platform;
+  const title = upload.error ? ` title="${upload.error.replaceAll('"', "&quot;")}"` : "";
+  return `<span class="chip ${upload.status}"${title}>${label}: ${upload.status}</span>`;
+}
+
+async function loadVideos() {
+  const res = await fetch("/api/videos");
+  const videos = await res.json();
+  const el = $("#videos");
+
+  if (!videos.length) {
+    el.innerHTML = `<p class="empty">No videos yet - upload one above.</p>`;
+    return;
+  }
+
+  el.innerHTML = videos.map((v) => {
+    const clips = v.clips.map((c) => {
+      const due = c.scheduledAt <= Date.now();
+      const when = due ? "publishing window open" : `publishes ${fmtTime(c.scheduledAt)}`;
+      const chips = c.uploads.length
+        ? `<span class="chips">${c.uploads.map(chip).join("")}</span>`
+        : `<span class="clip-when">${when}</span>`;
+      return `<div class="clip">
+        <span><a href="${c.url}" target="_blank">Part ${c.part}/${c.totalParts}</a>
+          <span class="clip-when">(${Math.round(c.durationSeconds)}s)</span></span>
+        ${chips}
+      </div>`;
+    }).join("");
+
+    const statusLine =
+      v.status === "processing" ? "Splitting into clips&hellip;"
+      : v.status === "failed" ? `<span class="video-error">Processing failed: ${v.error || "unknown error"}</span>`
+      : `${v.clips.length} clip(s)`;
+
+    return `<div class="video-item">
+      <div class="video-head">
+        <span class="video-title">${v.title}</span>
+        <span class="video-meta">${statusLine}</span>
+      </div>
+      <div class="clips">${clips}</div>
+    </div>`;
+  }).join("");
+}
+
+showBannerFromQuery();
+loadAccounts();
+loadVideos();
+setInterval(loadVideos, 8000);
+setInterval(loadAccounts, 30000);
