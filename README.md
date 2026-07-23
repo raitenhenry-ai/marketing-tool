@@ -13,6 +13,32 @@ How it works:
 - Node.js 18+
 - ffmpeg + ffprobe on the PATH (or set `FFMPEG_PATH` / `FFPROBE_PATH`)
 
+## Deployment: needs an always-on server (not Vercel/Netlify)
+
+This app **cannot run on serverless platforms** like Vercel or Netlify. It needs a
+persistent process and persistent disk, for three reasons:
+
+1. The SQLite queue and rendered clips live on disk (`data/`) — serverless
+   filesystems are read-only/ephemeral.
+2. ffmpeg encodes 2-minute clips — not available in serverless functions and
+   longer than their execution limits.
+3. The 3-hour publishing schedule is driven by a background worker that must
+   stay running between uploads.
+
+Deploy it with the included `Dockerfile` on any container host — Railway,
+Render, Fly.io, or a plain VPS:
+
+```bash
+docker build -t shortform-manager .
+docker run -d --name shortform -p 3000:3000 \
+  --env-file .env -v shortform-data:/app/data shortform-manager
+```
+
+On Railway/Render/Fly the Dockerfile is detected automatically; set the
+environment variables from `.env.example` in their dashboard, attach a
+persistent volume at `/app/data`, and set `BASE_URL` to the public URL the
+platform gives you (then register that URL in each platform's OAuth settings).
+
 ## Setup
 
 ```bash
