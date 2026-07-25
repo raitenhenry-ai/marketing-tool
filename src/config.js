@@ -23,6 +23,12 @@ const config = {
   maxAccountsPerPlatform: Number(process.env.MAX_ACCOUNTS_PER_PLATFORM || 5),
   verticalFormat: (process.env.VERTICAL_FORMAT || "true").toLowerCase() !== "false",
 
+  // Encoding quality. CRF 18 is visually near-lossless; platforms re-encode
+  // uploads, so a high-quality source is what keeps the final result crisp.
+  videoCrf: Number(process.env.VIDEO_CRF || 18),
+  videoPreset: process.env.VIDEO_PRESET || "medium",
+  normalizeAudio: (process.env.NORMALIZE_AUDIO || "true").toLowerCase() !== "false",
+
   // Auto-subtitles via OpenAI Whisper; disabled when no API key is set.
   openaiApiKey: process.env.OPENAI_API_KEY || "",
   subtitles: (process.env.SUBTITLES || "true").toLowerCase() !== "false",

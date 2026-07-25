@@ -71,14 +71,17 @@ function buildArgs({ inputPath, outputPath, start, length, partLabel, source, as
   const subs = assPath ? `,ass='${escapeFilterPath(assPath)}'` : "";
 
   if (config.verticalFormat) {
-    // 1080x1920 canvas: blurred cover-fit background with the original video
-    // fitted on top, then the text overlays.
+    // 1080x1920 canvas: darkened, heavily blurred cover-fit background with
+    // the original video fitted on top (Lanczos scale + mild sharpen so it
+    // stays crisp), then the text overlays.
     const overlays = buildFilter({ partLabel, outHeight: 1920 });
     args.push(
       "-filter_complex",
       `[0:v]split=2[bg][fg];` +
-        `[bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=20:5[bgb];` +
-        `[fg]scale=1080:1920:force_original_aspect_ratio=decrease[fgs];` +
+        `[bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,` +
+        `boxblur=32:6,eq=brightness=-0.08:saturation=0.85[bgb];` +
+        `[fg]scale=1080:1920:force_original_aspect_ratio=decrease:flags=lanczos,` +
+        `unsharp=5:5:0.3:5:5:0.0[fgs];` +
         `[bgb][fgs]overlay=(W-w)/2:(H-h)/2,${overlays}${subs}[v]`,
       "-map", "[v]", "-map", "0:a?"
     );
@@ -87,11 +90,15 @@ function buildArgs({ inputPath, outputPath, start, length, partLabel, source, as
   }
 
   args.push(
-    "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
-    "-c:a", "aac", "-b:a", "128k",
-    "-movflags", "+faststart",
-    outputPath
+    "-c:v", "libx264", "-preset", config.videoPreset, "-crf", String(config.videoCrf),
+    "-profile:v", "high", "-pix_fmt", "yuv420p",
+    "-c:a", "aac", "-b:a", "192k", "-ar", "48000"
   );
+  if (config.normalizeAudio) {
+    // Match the -14 LUFS loudness target the platforms normalize to.
+    args.push("-af", "loudnorm=I=-14:TP=-1.5:LRA=11");
+  }
+  args.push("-movflags", "+faststart", outputPath);
   return args;
 }
 

@@ -80,6 +80,9 @@ All settings live in `.env` (see `.env.example`):
 | `CLIP_DURATION_SECONDS` | `120` | Length of each clip |
 | `UPLOAD_INTERVAL_HOURS` | `3` | Gap between consecutive parts |
 | `VERTICAL_FORMAT` | `true` | Render 1080×1920 vertical with blurred background |
+| `VIDEO_CRF` | `18` | Encode quality (lower = better/bigger; 18 ≈ near-lossless) |
+| `VIDEO_PRESET` | `medium` | x264 speed/quality trade-off; use `fast` on weak servers |
+| `NORMALIZE_AUDIO` | `true` | Normalize loudness to the -14 LUFS platform target |
 | `YOUTUBE_PRIVACY_STATUS` | `public` | `public`, `unlisted` or `private` |
 
 ## How scheduling works
