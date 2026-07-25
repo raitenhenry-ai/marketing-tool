@@ -2,7 +2,9 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import config from "./config.js";
 import db from "./db.js";
+import fs from "node:fs";
 import { subtitlesEnabled, generateClipSubtitles } from "./transcribe.js";
+import { buildOverlayAss } from "./overlays.js";
 import { resolveSegments } from "./cuts.js";
 
 function run(cmd, args) {
@@ -36,45 +38,20 @@ async function probe(filePath) {
   };
 }
 
-function escapeDrawtext(text) {
-  return text.replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/:/g, "\\:").replace(/%/g, "\\%");
-}
-
-function buildFilter({ partLabel, outHeight }) {
-  const font = config.fontPath ? `fontfile='${config.fontPath}':` : "";
-  const partSize = Math.round(outHeight * 0.045);
-  const domainSize = Math.round(outHeight * 0.03);
-  const margin = Math.round(outHeight * 0.06);
-  const box = "box=1:boxcolor=black@0.45:boxborderw=14";
-
-  const drawParts = [];
-  if (partLabel) {
-    drawParts.push(
-      `drawtext=${font}text='${escapeDrawtext(partLabel)}':fontsize=${partSize}:fontcolor=white:` +
-        `x=(w-text_w)/2:y=${margin}:${box}`
-    );
-  }
-  drawParts.push(
-    `drawtext=${font}text='${escapeDrawtext(config.siteDomain)}':fontsize=${domainSize}:fontcolor=white:` +
-      `x=(w-text_w)/2:y=h-${margin}-text_h:${box}`
-  );
-  return drawParts.join(",");
-}
-
 function escapeFilterPath(p) {
   return p.replace(/\\/g, "/").replace(/:/g, "\\:").replace(/'/g, "\\'");
 }
 
-function buildArgs({ inputPath, outputPath, start, length, partLabel, source, assPath }) {
+function buildArgs({ inputPath, outputPath, start, length, overlayAssPath, subsAssPath }) {
   const args = ["-y", "-ss", String(start), "-i", inputPath, "-t", String(length)];
-  // Subtitles go last in the chain so they render on top of everything.
-  const subs = assPath ? `,ass='${escapeFilterPath(assPath)}'` : "";
+  // Badges first, then subtitles on top.
+  let text = `ass='${escapeFilterPath(overlayAssPath)}'`;
+  if (subsAssPath) text += `,ass='${escapeFilterPath(subsAssPath)}'`;
 
   if (config.verticalFormat) {
     // 1080x1920 canvas: darkened, heavily blurred cover-fit background with
     // the original video fitted on top (Lanczos scale + mild sharpen so it
-    // stays crisp), then the text overlays.
-    const overlays = buildFilter({ partLabel, outHeight: 1920 });
+    // stays crisp), then the badge/subtitle overlays.
     args.push(
       "-filter_complex",
       `[0:v]split=2[bg][fg];` +
@@ -82,11 +59,11 @@ function buildArgs({ inputPath, outputPath, start, length, partLabel, source, as
         `boxblur=32:6,eq=brightness=-0.08:saturation=0.85[bgb];` +
         `[fg]scale=1080:1920:force_original_aspect_ratio=decrease:flags=lanczos,` +
         `unsharp=5:5:0.3:5:5:0.0[fgs];` +
-        `[bgb][fgs]overlay=(W-w)/2:(H-h)/2,${overlays}${subs}[v]`,
+        `[bgb][fgs]overlay=(W-w)/2:(H-h)/2,${text}[v]`,
       "-map", "[v]", "-map", "0:a?"
     );
   } else {
-    args.push("-vf", buildFilter({ partLabel, outHeight: source.height }) + subs);
+    args.push("-vf", text);
   }
 
   args.push(
@@ -144,18 +121,30 @@ export async function processVideo(videoId) {
     for (let i = 0; i < totalParts; i++) {
       const { start, end } = segments[i];
       const length = end - start;
-      const partLabel = totalParts > 1 ? `Part ${i + 1}` : null;
+      const outBase = path.join(config.clipsDir, `video${video.id}-part${i + 1}`);
       const filename = `video${video.id}-part${i + 1}.mp4`;
       const outputPath = path.join(config.clipsDir, filename);
 
-      let assPath = null;
+      const overlayAssPath = `${outBase}.overlay.ass`;
+      fs.writeFileSync(
+        overlayAssPath,
+        buildOverlayAss({
+          partLabel: `Part ${i + 1}`,
+          siteDomain: config.siteDomain,
+          width: out.width,
+          height: out.height,
+          durationSeconds: length,
+        })
+      );
+
+      let subsAssPath = null;
       if (subtitlesEnabled()) {
         try {
-          assPath = await generateClipSubtitles({
+          subsAssPath = await generateClipSubtitles({
             inputPath: video.path,
             start,
             length,
-            outBase: path.join(config.clipsDir, `video${video.id}-part${i + 1}`),
+            outBase,
             width: out.width,
             height: out.height,
           });
@@ -169,7 +158,7 @@ export async function processVideo(videoId) {
 
       await run(
         config.ffmpegPath,
-        buildArgs({ inputPath: video.path, outputPath, start, length, partLabel, source, assPath })
+        buildArgs({ inputPath: video.path, outputPath, start, length, overlayAssPath, subsAssPath })
       );
       clipRows.push({ part: i + 1, totalParts, filename, length });
     }

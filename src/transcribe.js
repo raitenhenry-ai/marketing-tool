@@ -39,7 +39,7 @@ async function transcribe(audioPath) {
     .filter((w) => w.word);
 }
 
-function assTime(seconds) {
+export function assTime(seconds) {
   const s = Math.max(0, seconds);
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
@@ -48,7 +48,7 @@ function assTime(seconds) {
   return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}.${String(cs).padStart(2, "0")}`;
 }
 
-function escapeAssText(text) {
+export function escapeAssText(text) {
   return text.replace(/\\/g, "\\\\").replace(/\{/g, "(").replace(/\}/g, ")");
 }
 
