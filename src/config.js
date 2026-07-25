@@ -23,6 +23,10 @@ const config = {
   maxAccountsPerPlatform: Number(process.env.MAX_ACCOUNTS_PER_PLATFORM || 5),
   verticalFormat: (process.env.VERTICAL_FORMAT || "true").toLowerCase() !== "false",
 
+  // Auto-subtitles via OpenAI Whisper; disabled when no API key is set.
+  openaiApiKey: process.env.OPENAI_API_KEY || "",
+  subtitles: (process.env.SUBTITLES || "true").toLowerCase() !== "false",
+
   dataDir: path.join(rootDir, "data"),
   uploadsDir: path.join(rootDir, "data", "uploads"),
   clipsDir: path.join(rootDir, "data", "clips"),

@@ -22,6 +22,9 @@ async function loadAccounts() {
 
   $("#clip-len").textContent = `${Math.round(data.settings.clipDurationSeconds / 60)}-minute`;
   $("#interval").textContent = `${data.settings.uploadIntervalHours} hours`;
+  $("#subs-note").textContent = data.settings.subtitlesEnabled
+    ? "Auto-subtitles: on."
+    : "Auto-subtitles: off (set OPENAI_API_KEY to enable).";
 
   const max = data.settings.maxAccountsPerPlatform;
   for (const [name, info] of Object.entries(data.platforms)) {

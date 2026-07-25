@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 import config from "../config.js";
 import db from "../db.js";
 import { processVideo } from "../processing.js";
+import { subtitlesEnabled } from "../transcribe.js";
 import * as youtube from "../platforms/youtube.js";
 import * as instagram from "../platforms/instagram.js";
 import * as tiktok from "../platforms/tiktok.js";
@@ -47,6 +48,7 @@ router.get("/accounts", (req, res) => {
       clipDurationSeconds: config.clipDurationSeconds,
       uploadIntervalHours: config.uploadIntervalHours,
       maxAccountsPerPlatform: config.maxAccountsPerPlatform,
+      subtitlesEnabled: subtitlesEnabled(),
     },
   });
 });

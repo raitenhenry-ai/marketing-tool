@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import config from "./config.js";
 import db from "./db.js";
+import { subtitlesEnabled, generateClipSubtitles } from "./transcribe.js";
 
 function run(cmd, args) {
   return new Promise((resolve, reject) => {
@@ -59,8 +60,14 @@ function buildFilter({ partLabel, outHeight }) {
   return drawParts.join(",");
 }
 
-function buildArgs({ inputPath, outputPath, start, length, partLabel, source }) {
+function escapeFilterPath(p) {
+  return p.replace(/\\/g, "/").replace(/:/g, "\\:").replace(/'/g, "\\'");
+}
+
+function buildArgs({ inputPath, outputPath, start, length, partLabel, source, assPath }) {
   const args = ["-y", "-ss", String(start), "-i", inputPath, "-t", String(length)];
+  // Subtitles go last in the chain so they render on top of everything.
+  const subs = assPath ? `,ass='${escapeFilterPath(assPath)}'` : "";
 
   if (config.verticalFormat) {
     // 1080x1920 canvas: blurred cover-fit background with the original video
@@ -71,11 +78,11 @@ function buildArgs({ inputPath, outputPath, start, length, partLabel, source }) 
       `[0:v]split=2[bg][fg];` +
         `[bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=20:5[bgb];` +
         `[fg]scale=1080:1920:force_original_aspect_ratio=decrease[fgs];` +
-        `[bgb][fgs]overlay=(W-w)/2:(H-h)/2,${overlays}[v]`,
+        `[bgb][fgs]overlay=(W-w)/2:(H-h)/2,${overlays}${subs}[v]`,
       "-map", "[v]", "-map", "0:a?"
     );
   } else {
-    args.push("-vf", buildFilter({ partLabel, outHeight: source.height }));
+    args.push("-vf", buildFilter({ partLabel, outHeight: source.height }) + subs);
   }
 
   args.push(
@@ -106,6 +113,10 @@ export async function processVideo(videoId) {
        VALUES (?, ?, ?, ?, ?, ?, ?)`
     );
 
+    const out = config.verticalFormat
+      ? { width: 1080, height: 1920 }
+      : { width: source.width, height: source.height };
+
     const clipRows = [];
     for (let i = 0; i < totalParts; i++) {
       const start = i * clipLen;
@@ -114,9 +125,28 @@ export async function processVideo(videoId) {
       const filename = `video${video.id}-part${i + 1}.mp4`;
       const outputPath = path.join(config.clipsDir, filename);
 
+      let assPath = null;
+      if (subtitlesEnabled()) {
+        try {
+          assPath = await generateClipSubtitles({
+            inputPath: video.path,
+            start,
+            length,
+            outBase: path.join(config.clipsDir, `video${video.id}-part${i + 1}`),
+            width: out.width,
+            height: out.height,
+          });
+        } catch (err) {
+          console.warn(
+            `[processing] video ${video.id} part ${i + 1}: subtitles skipped -`,
+            err.message || err
+          );
+        }
+      }
+
       await run(
         config.ffmpegPath,
-        buildArgs({ inputPath: video.path, outputPath, start, length, partLabel, source })
+        buildArgs({ inputPath: video.path, outputPath, start, length, partLabel, source, assPath })
       );
       clipRows.push({ part: i + 1, totalParts, filename, length });
     }

@@ -5,7 +5,7 @@ Turn one long-form video into a scheduled series of short clips, published autom
 How it works:
 
 1. **Connect accounts** — YouTube, Instagram and TikTok are connected via OAuth 2 from the web UI. Up to **5 accounts per platform** (configurable via `MAX_ACCOUNTS_PER_PLATFORM`). Each video is assigned to **one account per platform** — the least-used one — and *all* of that video's parts publish to that same account, spreading your videos across accounts round-robin style.
-2. **Upload a long-form video** — it is split into **2-minute clips** with ffmpeg. Each clip gets **"Part 1", "Part 2", …** burned in at the top and **www.clint.build** at the bottom. Clips are rendered vertical (1080×1920) with a blurred background so they qualify as Shorts/Reels.
+2. **Upload a long-form video** — it is split into **2-minute clips** with ffmpeg. Each clip gets **"Part 1", "Part 2", …** burned in at the top and **www.clint.build** at the bottom. Clips are rendered vertical (1080×1920) with a blurred background so they qualify as Shorts/Reels. If `OPENAI_API_KEY` is set, each clip also gets **auto-generated subtitles** — bold uppercase captions, up to 3 words at a time, with the spoken word highlighted in yellow (transcribed with Whisper, ~$0.006/audio-minute).
 3. **Automatic scheduling** — Part 1 publishes as soon as processing finishes; every following part publishes **3 hours** after the previous one, to *all* connected platforms.
 
 ## Requirements
@@ -75,6 +75,8 @@ All settings live in `.env` (see `.env.example`):
 |---|---|---|
 | `SITE_DOMAIN` | `www.clint.build` | Text burned into the bottom of every clip and appended to captions |
 | `MAX_ACCOUNTS_PER_PLATFORM` | `5` | How many accounts can be connected per platform |
+| `OPENAI_API_KEY` | *(empty)* | Enables Whisper auto-subtitles on every clip |
+| `SUBTITLES` | `true` | Set `false` to disable subtitles while keeping the key |
 | `CLIP_DURATION_SECONDS` | `120` | Length of each clip |
 | `UPLOAD_INTERVAL_HOURS` | `3` | Gap between consecutive parts |
 | `VERTICAL_FORMAT` | `true` | Render 1080×1920 vertical with blurred background |
