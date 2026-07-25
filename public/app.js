@@ -55,9 +55,23 @@ async function loadAccounts() {
 
 document.addEventListener("click", async (e) => {
   const accountId = e.target.dataset?.disconnectId;
-  if (!accountId) return;
-  await fetch(`/auth/accounts/${accountId}/disconnect`, { method: "POST" });
-  loadAccounts();
+  if (accountId) {
+    await fetch(`/auth/accounts/${accountId}/disconnect`, { method: "POST" });
+    loadAccounts();
+    return;
+  }
+  const retryId = e.target.dataset?.retry;
+  if (retryId) {
+    await fetch(`/api/videos/${retryId}/reprocess`, { method: "POST" });
+    loadVideos();
+    return;
+  }
+  const delId = e.target.dataset?.del;
+  if (delId) {
+    if (!confirm("Delete this video and all its clips? Already-published posts stay up.")) return;
+    await fetch(`/api/videos/${delId}`, { method: "DELETE" });
+    loadVideos();
+  }
 });
 
 $("#upload-form").addEventListener("submit", (e) => {
@@ -142,10 +156,15 @@ async function loadVideos() {
       : v.status === "failed" ? `<span class="video-error">Processing failed: ${v.error || "unknown error"}</span>`
       : `${v.clips.length} clip(s)${assigned ? ` &rarr; ${assigned}` : ""}`;
 
+    const actions =
+      (v.status === "failed" ? `<button class="secondary" data-retry="${v.id}">Retry</button> ` : "") +
+      `<button class="secondary danger" data-del="${v.id}">Delete</button>`;
+
     return `<div class="video-item">
       <div class="video-head">
         <span class="video-title">${v.title}</span>
         <span class="video-meta">${statusLine}</span>
+        <span class="video-actions">${actions}</span>
       </div>
       <div class="clips">${clips}</div>
     </div>`;

@@ -80,11 +80,53 @@ function buildArgs({ inputPath, outputPath, start, length, overlayAssPath, subsA
   return args;
 }
 
+// Videos are encoded one at a time: parallel ffmpeg runs thrash small
+// servers and make every video slower. The queue drains in FIFO order.
+const queue = [];
+let draining = false;
+
+export function enqueueProcessing(videoId) {
+  queue.push(videoId);
+  drain();
+}
+
+async function drain() {
+  if (draining) return;
+  draining = true;
+  try {
+    while (queue.length) {
+      await processVideo(queue.shift());
+    }
+  } finally {
+    draining = false;
+  }
+}
+
+export function queueLength() {
+  return queue.length + (draining ? 1 : 0);
+}
+
+// Re-queue videos that were mid-processing when the server last stopped.
+export function recoverStuckVideos() {
+  const stuck = db.prepare("SELECT id FROM videos WHERE status = 'processing'").all();
+  for (const video of stuck) {
+    console.log(`[processing] re-queueing video ${video.id} left in 'processing' state`);
+    enqueueProcessing(video.id);
+  }
+  return stuck.length;
+}
+
 export async function processVideo(videoId) {
   const video = db.prepare("SELECT * FROM videos WHERE id = ?").get(videoId);
   if (!video) return;
 
+  // A re-run (crash recovery or manual retry) starts from a clean slate.
+  db.prepare("DELETE FROM clips WHERE video_id = ?").run(videoId);
+
   try {
+    if (!fs.existsSync(video.path)) {
+      throw new Error("Original video file is gone (cleaned up or never stored)");
+    }
     const source = await probe(video.path);
     if (!source.duration || source.duration <= 0) {
       throw new Error("Could not read video duration");

@@ -5,9 +5,10 @@ import crypto from "node:crypto";
 import config from "../config.js";
 import db from "../db.js";
 import fs from "node:fs";
-import { processVideo } from "../processing.js";
+import { enqueueProcessing } from "../processing.js";
 import { subtitlesEnabled } from "../transcribe.js";
 import { parseCuts } from "../cuts.js";
+import { deleteVideoFiles } from "../cleanup.js";
 import * as youtube from "../platforms/youtube.js";
 import * as instagram from "../platforms/instagram.js";
 import * as tiktok from "../platforms/tiktok.js";
@@ -78,10 +79,21 @@ router.post("/videos", upload.single("video"), (req, res) => {
     Date.now()
   );
 
-  // Fire and forget - progress is visible via GET /api/videos.
-  processVideo(result.lastInsertRowid);
+  // Queued (one encode at a time) - progress is visible via GET /api/videos.
+  enqueueProcessing(result.lastInsertRowid);
 
   res.json({ id: result.lastInsertRowid, status: "processing" });
+});
+
+router.post("/videos/:id/reprocess", (req, res) => {
+  const video = db.prepare("SELECT * FROM videos WHERE id = ?").get(req.params.id);
+  if (!video) return res.status(404).json({ error: "Video not found" });
+  if (video.status !== "failed") {
+    return res.status(400).json({ error: "Only failed videos can be reprocessed" });
+  }
+  db.prepare("UPDATE videos SET status = 'processing', error = NULL WHERE id = ?").run(video.id);
+  enqueueProcessing(video.id);
+  res.json({ ok: true });
 });
 
 router.get("/videos", (req, res) => {
@@ -128,7 +140,10 @@ router.get("/videos", (req, res) => {
 });
 
 router.delete("/videos/:id", (req, res) => {
-  db.prepare("DELETE FROM videos WHERE id = ?").run(req.params.id);
+  const video = db.prepare("SELECT * FROM videos WHERE id = ?").get(req.params.id);
+  if (!video) return res.status(404).json({ error: "Video not found" });
+  deleteVideoFiles(video);
+  db.prepare("DELETE FROM videos WHERE id = ?").run(video.id);
   res.json({ ok: true });
 });
 

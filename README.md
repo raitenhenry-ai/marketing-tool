@@ -73,6 +73,9 @@ All settings live in `.env` (see `.env.example`):
 
 | Variable | Default | Meaning |
 |---|---|---|
+| `ADMIN_PASSWORD` | *(empty)* | Dashboard password — **set this before going public** |
+| `DELETE_ORIGINALS_AFTER_DAYS` | `7` | Delete original uploads N days after processing (0 = keep) |
+| `PRUNE_VIDEOS_AFTER_DAYS` | `0` | Delete fully-published videos + clips after N days (0 = never) |
 | `SITE_DOMAIN` | `www.clint.build` | Text burned into the bottom of every clip and appended to captions |
 | `MAX_ACCOUNTS_PER_PLATFORM` | `5` | How many accounts can be connected per platform |
 | `OPENAI_API_KEY` | *(empty)* | Enables Whisper auto-subtitles + AI titles/hashtags |
@@ -86,6 +89,13 @@ All settings live in `.env` (see `.env.example`):
 | `VIDEO_PRESET` | `medium` | x264 speed/quality trade-off; use `fast` on weak servers |
 | `NORMALIZE_AUDIO` | `true` | Normalize loudness to the -14 LUFS platform target |
 | `YOUTUBE_PRIVACY_STATUS` | `public` | `public`, `unlisted` or `private` |
+
+## Operations
+
+- **Login**: set `ADMIN_PASSWORD` and the dashboard (uploads, accounts, queue) sits behind a sign-in page; `/clips/*` stays public because Instagram fetches clip files by URL. Login attempts are rate-limited.
+- **Processing queue**: videos encode one at a time (parallel ffmpeg runs would thrash a small server). If the server restarts mid-encode, interrupted videos are automatically re-queued on boot; failed videos get a Retry button.
+- **Health**: `GET /healthz` (no auth) reports uptime and queue depth; the Dockerfile ships a matching `HEALTHCHECK`.
+- **Disk**: originals are cleaned up after `DELETE_ORIGINALS_AFTER_DAYS`; deleting a video in the UI removes all its files. `PRUNE_VIDEOS_AFTER_DAYS` can additionally auto-delete old fully-published videos.
 
 ## How scheduling works
 

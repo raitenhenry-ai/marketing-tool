@@ -21,6 +21,12 @@ const config = {
   clipDurationSeconds: Number(process.env.CLIP_DURATION_SECONDS || 120),
   uploadIntervalHours: Number(process.env.UPLOAD_INTERVAL_HOURS || 3),
   maxAccountsPerPlatform: Number(process.env.MAX_ACCOUNTS_PER_PLATFORM || 5),
+
+  // Dashboard login; empty = no auth (local use only).
+  adminPassword: process.env.ADMIN_PASSWORD || "",
+  // Days before original uploads / whole videos are cleaned from disk.
+  deleteOriginalsAfterDays: Number(process.env.DELETE_ORIGINALS_AFTER_DAYS ?? 7),
+  pruneVideosAfterDays: Number(process.env.PRUNE_VIDEOS_AFTER_DAYS ?? 0),
   verticalFormat: (process.env.VERTICAL_FORMAT || "true").toLowerCase() !== "false",
 
   // Encoding quality. CRF 18 is visually near-lossless; platforms re-encode
@@ -68,8 +74,19 @@ const config = {
   },
 };
 
-for (const dir of [config.dataDir, config.uploadsDir, config.clipsDir]) {
-  fs.mkdirSync(dir, { recursive: true });
+try {
+  for (const dir of [config.dataDir, config.uploadsDir, config.clipsDir]) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+} catch (err) {
+  console.error(
+    `\nFATAL: cannot create the data directory (${err.code}: ${err.message}).\n\n` +
+      "If you are seeing this on Vercel, Netlify or another serverless platform:\n" +
+      "this app CANNOT run there. It needs a persistent server with a writable\n" +
+      "disk, ffmpeg, and an always-on background scheduler. Deploy the included\n" +
+      "Dockerfile to Railway, Render, Fly.io or a VPS instead - see README.md.\n"
+  );
+  process.exit(1);
 }
 
 export default config;
