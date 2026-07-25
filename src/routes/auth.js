@@ -1,4 +1,5 @@
 import { Router } from "express";
+import config from "../config.js";
 import db from "../db.js";
 import { createState, consumeState } from "../oauthState.js";
 import * as youtube from "../platforms/youtube.js";
@@ -15,6 +16,15 @@ router.get("/:platform", (req, res) => {
     return res
       .status(400)
       .send(`${req.params.platform} API credentials are not set - see .env.example`);
+  }
+  const count = db.prepare("SELECT COUNT(*) AS n FROM accounts WHERE platform = ?")
+    .get(req.params.platform).n;
+  if (count >= config.maxAccountsPerPlatform) {
+    return res.redirect(
+      `/?connect_error=${encodeURIComponent(
+        `Limit of ${config.maxAccountsPerPlatform} ${req.params.platform} accounts reached - disconnect one first`
+      )}`
+    );
   }
   res.redirect(platform.authUrl(createState(req.params.platform)));
 });
@@ -34,14 +44,31 @@ router.get("/:platform/callback", async (req, res) => {
 
   try {
     const account = await platform.handleCallback(code);
+
+    // Reconnecting an already-linked account refreshes it in place and does
+    // not consume a slot; only genuinely new accounts count toward the limit.
+    const existing = account.externalId
+      ? db.prepare("SELECT id FROM accounts WHERE platform = ? AND external_id = ?")
+          .get(name, account.externalId)
+      : null;
+    if (!existing) {
+      const count = db.prepare("SELECT COUNT(*) AS n FROM accounts WHERE platform = ?").get(name).n;
+      if (count >= config.maxAccountsPerPlatform) {
+        return res.redirect(
+          `/?connect_error=${encodeURIComponent(
+            `Limit of ${config.maxAccountsPerPlatform} ${name} accounts reached - disconnect one first`
+          )}`
+        );
+      }
+    }
+
     db.prepare(
       `INSERT INTO accounts (platform, access_token, refresh_token, expires_at, external_id, display_name, connected_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT (platform) DO UPDATE SET
+       ON CONFLICT (platform, external_id) DO UPDATE SET
          access_token = excluded.access_token,
          refresh_token = COALESCE(excluded.refresh_token, accounts.refresh_token),
          expires_at = excluded.expires_at,
-         external_id = excluded.external_id,
          display_name = excluded.display_name,
          connected_at = excluded.connected_at`
     ).run(
@@ -60,8 +87,8 @@ router.get("/:platform/callback", async (req, res) => {
   }
 });
 
-router.post("/:platform/disconnect", (req, res) => {
-  db.prepare("DELETE FROM accounts WHERE platform = ?").run(req.params.platform);
+router.post("/accounts/:id/disconnect", (req, res) => {
+  db.prepare("DELETE FROM accounts WHERE id = ?").run(req.params.id);
   res.json({ ok: true });
 });
 

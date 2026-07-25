@@ -30,6 +30,16 @@ h2 { font-size: 1.05rem; color: #c3c9d5; margin-bottom: 12px; }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: #555e70; display: inline-block; }
 .card.connected .dot { background: #4cc26a; }
 .card-status { color: #9aa3b2; font-size: 0.9rem; margin: 8px 0 12px; min-height: 1.4em; }
+.account-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 3px 0; border-bottom: 1px solid #1f2632;
+}
+.account-row:last-child { border-bottom: 0; }
+.unlink {
+  background: none; border: 0; color: #717a8a; cursor: pointer;
+  font-size: 1rem; padding: 0 4px; line-height: 1;
+}
+.unlink:hover { color: #d89f9f; background: none; }
 
 button, .btn {
   background: #2f6fed; color: #fff; border: 0; border-radius: 8px;

@@ -26,20 +26,27 @@ const upload = multer({
 });
 
 router.get("/accounts", (req, res) => {
-  const connected = Object.fromEntries(
-    db.prepare("SELECT platform, display_name, connected_at FROM accounts").all()
-      .map((a) => [a.platform, { displayName: a.display_name, connectedAt: a.connected_at }])
-  );
+  const byPlatform = { youtube: [], instagram: [], tiktok: [] };
+  for (const a of db.prepare(
+    "SELECT id, platform, display_name, connected_at FROM accounts ORDER BY id"
+  ).all()) {
+    byPlatform[a.platform]?.push({
+      id: a.id,
+      displayName: a.display_name,
+      connectedAt: a.connected_at,
+    });
+  }
   res.json({
     platforms: {
-      youtube: { configured: youtube.isConfigured(), account: connected.youtube || null },
-      instagram: { configured: instagram.isConfigured(), account: connected.instagram || null },
-      tiktok: { configured: tiktok.isConfigured(), account: connected.tiktok || null },
+      youtube: { configured: youtube.isConfigured(), accounts: byPlatform.youtube },
+      instagram: { configured: instagram.isConfigured(), accounts: byPlatform.instagram },
+      tiktok: { configured: tiktok.isConfigured(), accounts: byPlatform.tiktok },
     },
     settings: {
       siteDomain: config.siteDomain,
       clipDurationSeconds: config.clipDurationSeconds,
       uploadIntervalHours: config.uploadIntervalHours,
+      maxAccountsPerPlatform: config.maxAccountsPerPlatform,
     },
   });
 });
@@ -65,7 +72,15 @@ router.get("/videos", (req, res) => {
     "SELECT id, part_number, total_parts, filename, duration_seconds, scheduled_at FROM clips WHERE video_id = ? ORDER BY part_number"
   );
   const uploadsStmt = db.prepare(
-    "SELECT platform, status, attempts, error, platform_video_id, uploaded_at FROM uploads WHERE clip_id = ?"
+    `SELECT uploads.platform, uploads.status, uploads.attempts, uploads.error,
+            uploads.platform_video_id, uploads.uploaded_at, accounts.display_name AS account_name
+     FROM uploads LEFT JOIN accounts ON accounts.id = uploads.account_id
+     WHERE uploads.clip_id = ?`
+  );
+  const assignmentsStmt = db.prepare(
+    `SELECT video_accounts.platform, accounts.display_name AS account_name
+     FROM video_accounts JOIN accounts ON accounts.id = video_accounts.account_id
+     WHERE video_accounts.video_id = ?`
   );
 
   res.json(
@@ -76,6 +91,7 @@ router.get("/videos", (req, res) => {
       error: v.error,
       durationSeconds: v.duration_seconds,
       createdAt: v.created_at,
+      accounts: assignmentsStmt.all(v.id),
       clips: clipsStmt.all(v.id).map((c) => ({
         id: c.id,
         part: c.part_number,

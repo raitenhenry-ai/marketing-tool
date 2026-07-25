@@ -23,29 +23,37 @@ async function loadAccounts() {
   $("#clip-len").textContent = `${Math.round(data.settings.clipDurationSeconds / 60)}-minute`;
   $("#interval").textContent = `${data.settings.uploadIntervalHours} hours`;
 
+  const max = data.settings.maxAccountsPerPlatform;
   for (const [name, info] of Object.entries(data.platforms)) {
     const card = document.querySelector(`.card[data-platform="${name}"]`);
     const status = $(".card-status", card);
     const actions = $(".card-actions", card);
-    card.classList.toggle("connected", Boolean(info.account));
+    card.classList.toggle("connected", info.accounts.length > 0);
 
-    if (info.account) {
-      status.textContent = `Connected as ${info.account.displayName || "account"}`;
-      actions.innerHTML = `<button class="secondary" data-disconnect="${name}">Disconnect</button>`;
-    } else if (!info.configured) {
+    if (!info.configured) {
       status.textContent = "API credentials missing (see .env.example)";
       actions.innerHTML = "";
-    } else {
-      status.textContent = "Not connected";
-      actions.innerHTML = `<a class="btn" href="/auth/${name}">Connect</a>`;
+      continue;
     }
+
+    status.innerHTML = info.accounts.length
+      ? info.accounts.map((a) =>
+          `<span class="account-row">${a.displayName || "account"}
+             <button class="unlink" title="Disconnect" data-disconnect-id="${a.id}">&times;</button>
+           </span>`
+        ).join("")
+      : "Not connected";
+
+    actions.innerHTML = info.accounts.length < max
+      ? `<a class="btn" href="/auth/${name}">Connect account (${info.accounts.length}/${max})</a>`
+      : `<span class="video-meta">Account limit reached (${max}/${max})</span>`;
   }
 }
 
 document.addEventListener("click", async (e) => {
-  const platform = e.target.dataset?.disconnect;
-  if (!platform) return;
-  await fetch(`/auth/${platform}/disconnect`, { method: "POST" });
+  const accountId = e.target.dataset?.disconnectId;
+  if (!accountId) return;
+  await fetch(`/auth/accounts/${accountId}/disconnect`, { method: "POST" });
   loadAccounts();
 });
 
@@ -90,8 +98,9 @@ function fmtTime(ms) {
 
 function chip(upload) {
   const label = PLATFORM_LABELS[upload.platform] || upload.platform;
+  const account = upload.account_name ? ` (${upload.account_name})` : "";
   const title = upload.error ? ` title="${upload.error.replaceAll('"', "&quot;")}"` : "";
-  return `<span class="chip ${upload.status}"${title}>${label}: ${upload.status}</span>`;
+  return `<span class="chip ${upload.status}"${title}>${label}${account}: ${upload.status}</span>`;
 }
 
 async function loadVideos() {
@@ -118,10 +127,13 @@ async function loadVideos() {
       </div>`;
     }).join("");
 
+    const assigned = (v.accounts || [])
+      .map((a) => `${PLATFORM_LABELS[a.platform] || a.platform}: ${a.account_name}`)
+      .join(" &middot; ");
     const statusLine =
       v.status === "processing" ? "Splitting into clips&hellip;"
       : v.status === "failed" ? `<span class="video-error">Processing failed: ${v.error || "unknown error"}</span>`
-      : `${v.clips.length} clip(s)`;
+      : `${v.clips.length} clip(s)${assigned ? ` &rarr; ${assigned}` : ""}`;
 
     return `<div class="video-item">
       <div class="video-head">

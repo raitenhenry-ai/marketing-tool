@@ -4,7 +4,7 @@ Turn one long-form video into a scheduled series of short clips, published autom
 
 How it works:
 
-1. **Connect accounts** — YouTube, Instagram and TikTok are connected via OAuth 2 from the web UI.
+1. **Connect accounts** — YouTube, Instagram and TikTok are connected via OAuth 2 from the web UI. Up to **5 accounts per platform** (configurable via `MAX_ACCOUNTS_PER_PLATFORM`). Each video is assigned to **one account per platform** — the least-used one — and *all* of that video's parts publish to that same account, spreading your videos across accounts round-robin style.
 2. **Upload a long-form video** — it is split into **2-minute clips** with ffmpeg. Each clip gets **"Part 1", "Part 2", …** burned in at the top and **www.clint.build** at the bottom. Clips are rendered vertical (1080×1920) with a blurred background so they qualify as Shorts/Reels.
 3. **Automatic scheduling** — Part 1 publishes as soon as processing finishes; every following part publishes **3 hours** after the previous one, to *all* connected platforms.
 
@@ -74,6 +74,7 @@ All settings live in `.env` (see `.env.example`):
 | Variable | Default | Meaning |
 |---|---|---|
 | `SITE_DOMAIN` | `www.clint.build` | Text burned into the bottom of every clip and appended to captions |
+| `MAX_ACCOUNTS_PER_PLATFORM` | `5` | How many accounts can be connected per platform |
 | `CLIP_DURATION_SECONDS` | `120` | Length of each clip |
 | `UPLOAD_INTERVAL_HOURS` | `3` | Gap between consecutive parts |
 | `VERTICAL_FORMAT` | `true` | Render 1080×1920 vertical with blurred background |
@@ -82,7 +83,8 @@ All settings live in `.env` (see `.env.example`):
 ## How scheduling works
 
 - When processing finishes, each clip gets a `scheduled_at` timestamp: part 1 = now, part N = now + (N−1) × 3h.
-- A background worker runs every minute and publishes any due clip to every **currently connected** platform (up to 3 attempts per platform, 10 minutes apart).
+- A background worker runs every minute and publishes any due clip to each platform that has at least one connected account (up to 3 attempts per upload, 10 minutes apart).
+- On each platform, a video publishes to its **assigned account**: the first time a video needs to publish, the account with the fewest assigned videos is picked, and every part of that video sticks with it. Consecutive videos therefore rotate across your connected accounts.
 - Everything is stored in SQLite (`data/app.db`), so the queue survives restarts. Keep the server running so scheduled uploads go out.
 
 ## Notes & limits

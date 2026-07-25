@@ -20,6 +20,7 @@ const config = {
   siteDomain: process.env.SITE_DOMAIN || "www.clint.build",
   clipDurationSeconds: Number(process.env.CLIP_DURATION_SECONDS || 120),
   uploadIntervalHours: Number(process.env.UPLOAD_INTERVAL_HOURS || 3),
+  maxAccountsPerPlatform: Number(process.env.MAX_ACCOUNTS_PER_PLATFORM || 5),
   verticalFormat: (process.env.VERTICAL_FORMAT || "true").toLowerCase() !== "false",
 
   dataDir: path.join(rootDir, "data"),
