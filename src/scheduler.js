@@ -63,7 +63,7 @@ async function freshAccount(accountId) {
 }
 
 function captionFor(video, clip) {
-  const part = clip.total_parts > 1 ? ` - Part ${clip.part_number}` : "";
+  const part = clip.total_parts > 1 ? ` - Part ${clip.part_number}/${clip.total_parts}` : "";
   return `${video.title}${part}\n\n${config.siteDomain}`;
 }
 
@@ -81,7 +81,7 @@ async function publish(accountRow, clip, video) {
 
     const filePath = path.join(config.clipsDir, clip.filename);
     const publicUrl = `${config.baseUrl}/clips/${encodeURIComponent(clip.filename)}`;
-    const part = clip.total_parts > 1 ? ` - Part ${clip.part_number}` : "";
+    const part = clip.total_parts > 1 ? ` - Part ${clip.part_number}/${clip.total_parts}` : "";
     const caption = captionFor(video, clip);
 
     let platformVideoId;

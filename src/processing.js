@@ -129,7 +129,7 @@ export async function processVideo(videoId) {
       fs.writeFileSync(
         overlayAssPath,
         buildOverlayAss({
-          partLabel: `Part ${i + 1}`,
+          partLabel: `Part ${i + 1}/${totalParts}`,
           siteDomain: config.siteDomain,
           width: out.width,
           height: out.height,
