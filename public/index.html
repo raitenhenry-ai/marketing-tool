@@ -41,6 +41,9 @@
       <form id="upload-form">
         <input type="text" id="title" name="title" placeholder="Video title (used in captions)" />
         <input type="file" id="file" name="video" accept="video/*" required />
+        <textarea id="cuts" name="cuts" rows="3" placeholder="Optional: custom cut times. Leave empty to auto-split into equal parts.
+Cut points - splits at these times:  2:00, 5:30, 9:15
+Or exact ranges (one per line, skipped footage is dropped):  0:30-2:10"></textarea>
         <button type="submit" id="upload-btn">Upload &amp; split</button>
         <progress id="upload-progress" class="hidden" max="100" value="0"></progress>
       </form>

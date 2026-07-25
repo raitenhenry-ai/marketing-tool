@@ -56,6 +56,11 @@ button:disabled { opacity: 0.5; cursor: default; }
   color: #e8eaf0; padding: 9px 12px;
 }
 #upload-form input[type="file"] { color: #9aa3b2; flex: 1 1 240px; }
+#upload-form textarea {
+  flex: 1 1 100%; background: #171c26; border: 1px solid #262d3b; border-radius: 8px;
+  color: #e8eaf0; padding: 9px 12px; font: inherit; font-size: 0.85rem; resize: vertical;
+}
+#upload-form textarea::placeholder { color: #717a8a; }
 progress { width: 100%; }
 
 .video-item {

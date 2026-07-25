@@ -67,6 +67,7 @@ $("#upload-form").addEventListener("submit", (e) => {
 
   const form = new FormData();
   form.append("title", $("#title").value);
+  form.append("cuts", $("#cuts").value);
   form.append("video", file);
 
   const btn = $("#upload-btn");

@@ -107,4 +107,13 @@ CREATE TABLE IF NOT EXISTS uploads (
   db.pragma("user_version = 1");
 }
 
+// v1 -> v2: optional user-defined cut times per video.
+if (version < 2) {
+  const cols = db.prepare("PRAGMA table_info(videos)").all();
+  if (!cols.some((c) => c.name === "cuts_json")) {
+    db.exec("ALTER TABLE videos ADD COLUMN cuts_json TEXT");
+  }
+  db.pragma("user_version = 2");
+}
+
 export default db;

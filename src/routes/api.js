@@ -4,8 +4,10 @@ import path from "node:path";
 import crypto from "node:crypto";
 import config from "../config.js";
 import db from "../db.js";
+import fs from "node:fs";
 import { processVideo } from "../processing.js";
 import { subtitlesEnabled } from "../transcribe.js";
+import { parseCuts } from "../cuts.js";
 import * as youtube from "../platforms/youtube.js";
 import * as instagram from "../platforms/instagram.js";
 import * as tiktok from "../platforms/tiktok.js";
@@ -57,10 +59,24 @@ router.post("/videos", upload.single("video"), (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No video file received" });
   const title = (req.body.title || "").trim() || path.parse(req.file.originalname || "video").name;
 
+  let cuts = null;
+  try {
+    cuts = parseCuts(req.body.cuts);
+  } catch (err) {
+    fs.rmSync(req.file.path, { force: true });
+    return res.status(400).json({ error: String(err.message || err) });
+  }
+
   const result = db.prepare(
-    `INSERT INTO videos (title, original_filename, path, status, created_at)
-     VALUES (?, ?, ?, 'processing', ?)`
-  ).run(title, req.file.originalname || req.file.filename, req.file.path, Date.now());
+    `INSERT INTO videos (title, original_filename, path, status, cuts_json, created_at)
+     VALUES (?, ?, ?, 'processing', ?, ?)`
+  ).run(
+    title,
+    req.file.originalname || req.file.filename,
+    req.file.path,
+    cuts ? JSON.stringify(cuts) : null,
+    Date.now()
+  );
 
   // Fire and forget - progress is visible via GET /api/videos.
   processVideo(result.lastInsertRowid);

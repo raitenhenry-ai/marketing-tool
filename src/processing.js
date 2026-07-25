@@ -3,6 +3,7 @@ import path from "node:path";
 import config from "./config.js";
 import db from "./db.js";
 import { subtitlesEnabled, generateClipSubtitles } from "./transcribe.js";
+import { resolveSegments } from "./cuts.js";
 
 function run(cmd, args) {
   return new Promise((resolve, reject) => {
@@ -104,8 +105,23 @@ export async function processVideo(videoId) {
       throw new Error("Could not read video duration");
     }
 
-    const clipLen = config.clipDurationSeconds;
-    const totalParts = Math.max(1, Math.ceil(source.duration / clipLen));
+    // Custom cut times take precedence; otherwise split into equal-length clips.
+    let segments;
+    if (video.cuts_json) {
+      segments = resolveSegments(JSON.parse(video.cuts_json), source.duration);
+      if (!segments.length) {
+        throw new Error(
+          `All cut times fall outside the video (duration ${Math.round(source.duration)}s)`
+        );
+      }
+    } else {
+      const clipLen = config.clipDurationSeconds;
+      segments = [];
+      for (let t = 0; t < source.duration; t += clipLen) {
+        segments.push({ start: t, end: Math.min(t + clipLen, source.duration) });
+      }
+    }
+    const totalParts = segments.length;
     const intervalMs = config.uploadIntervalHours * 3600 * 1000;
 
     const insertClip = db.prepare(
@@ -119,8 +135,8 @@ export async function processVideo(videoId) {
 
     const clipRows = [];
     for (let i = 0; i < totalParts; i++) {
-      const start = i * clipLen;
-      const length = Math.min(clipLen, source.duration - start);
+      const { start, end } = segments[i];
+      const length = end - start;
       const partLabel = totalParts > 1 ? `Part ${i + 1}` : null;
       const filename = `video${video.id}-part${i + 1}.mp4`;
       const outputPath = path.join(config.clipsDir, filename);
