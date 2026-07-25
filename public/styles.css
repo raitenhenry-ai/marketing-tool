@@ -79,6 +79,7 @@ progress { width: 100%; }
   font-size: 0.88rem;
 }
 .clip a { color: #7fa8f5; text-decoration: none; }
+.gen-title { color: #c3c9d5; font-style: italic; }
 .clip-when { color: #9aa3b2; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .chip {

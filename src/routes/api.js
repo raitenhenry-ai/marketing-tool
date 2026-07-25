@@ -87,7 +87,9 @@ router.post("/videos", upload.single("video"), (req, res) => {
 router.get("/videos", (req, res) => {
   const videos = db.prepare("SELECT * FROM videos ORDER BY created_at DESC").all();
   const clipsStmt = db.prepare(
-    "SELECT id, part_number, total_parts, filename, duration_seconds, scheduled_at FROM clips WHERE video_id = ? ORDER BY part_number"
+    `SELECT id, part_number, total_parts, filename, duration_seconds, scheduled_at,
+            gen_title, gen_hashtags
+     FROM clips WHERE video_id = ? ORDER BY part_number`
   );
   const uploadsStmt = db.prepare(
     `SELECT uploads.platform, uploads.status, uploads.attempts, uploads.error,
@@ -116,6 +118,8 @@ router.get("/videos", (req, res) => {
         totalParts: c.total_parts,
         durationSeconds: c.duration_seconds,
         scheduledAt: c.scheduled_at,
+        genTitle: c.gen_title,
+        genHashtags: JSON.parse(c.gen_hashtags || "[]"),
         url: `/clips/${encodeURIComponent(c.filename)}`,
         uploads: uploadsStmt.all(c.id),
       })),

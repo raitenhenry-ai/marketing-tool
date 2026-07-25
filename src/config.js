@@ -32,6 +32,9 @@ const config = {
   // Auto-subtitles via OpenAI Whisper; disabled when no API key is set.
   openaiApiKey: process.env.OPENAI_API_KEY || "",
   subtitles: (process.env.SUBTITLES || "true").toLowerCase() !== "false",
+  // Per-clip AI titles/descriptions/hashtags from the transcript.
+  generateMetadata: (process.env.GENERATE_METADATA || "true").toLowerCase() !== "false",
+  openaiChatModel: process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini",
 
   dataDir: path.join(rootDir, "data"),
   uploadsDir: path.join(rootDir, "data", "uploads"),

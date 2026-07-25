@@ -4,6 +4,7 @@ import config from "./config.js";
 import db from "./db.js";
 import fs from "node:fs";
 import { subtitlesEnabled, generateClipSubtitles } from "./transcribe.js";
+import { metadataEnabled, generateClipMetadata } from "./metadata.js";
 import { buildOverlayAss } from "./overlays.js";
 import { resolveSegments } from "./cuts.js";
 
@@ -109,8 +110,9 @@ export async function processVideo(videoId) {
     const intervalMs = config.uploadIntervalHours * 3600 * 1000;
 
     const insertClip = db.prepare(
-      `INSERT INTO clips (video_id, part_number, total_parts, filename, duration_seconds, scheduled_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO clips (video_id, part_number, total_parts, filename, duration_seconds, scheduled_at, created_at,
+                          gen_title, gen_description, gen_hashtags)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
 
     const out = config.verticalFormat
@@ -138,9 +140,10 @@ export async function processVideo(videoId) {
       );
 
       let subsAssPath = null;
+      let transcript = null;
       if (subtitlesEnabled()) {
         try {
-          subsAssPath = await generateClipSubtitles({
+          const subs = await generateClipSubtitles({
             inputPath: video.path,
             start,
             length,
@@ -148,9 +151,28 @@ export async function processVideo(videoId) {
             width: out.width,
             height: out.height,
           });
+          if (subs) ({ assPath: subsAssPath, transcript } = subs);
         } catch (err) {
           console.warn(
             `[processing] video ${video.id} part ${i + 1}: subtitles skipped -`,
+            err.message || err
+          );
+        }
+      }
+
+      let meta = null;
+      if (transcript && metadataEnabled()) {
+        try {
+          meta = await generateClipMetadata({
+            transcript,
+            videoTitle: video.title,
+            part: i + 1,
+            totalParts,
+          });
+          console.log(`[processing] video ${video.id} part ${i + 1} title: "${meta.title}"`);
+        } catch (err) {
+          console.warn(
+            `[processing] video ${video.id} part ${i + 1}: metadata skipped -`,
             err.message || err
           );
         }
@@ -160,7 +182,7 @@ export async function processVideo(videoId) {
         config.ffmpegPath,
         buildArgs({ inputPath: video.path, outputPath, start, length, overlayAssPath, subsAssPath })
       );
-      clipRows.push({ part: i + 1, totalParts, filename, length });
+      clipRows.push({ part: i + 1, totalParts, filename, length, meta });
     }
 
     // Schedule only after every clip rendered successfully: part 1 goes out
@@ -169,7 +191,10 @@ export async function processVideo(videoId) {
     for (const clip of clipRows) {
       insertClip.run(
         video.id, clip.part, clip.totalParts, clip.filename, clip.length,
-        now + (clip.part - 1) * intervalMs, now
+        now + (clip.part - 1) * intervalMs, now,
+        clip.meta?.title ?? null,
+        clip.meta?.description ?? null,
+        clip.meta?.hashtags?.length ? JSON.stringify(clip.meta.hashtags) : null
       );
     }
 

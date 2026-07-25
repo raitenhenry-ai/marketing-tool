@@ -75,8 +75,10 @@ All settings live in `.env` (see `.env.example`):
 |---|---|---|
 | `SITE_DOMAIN` | `www.clint.build` | Text burned into the bottom of every clip and appended to captions |
 | `MAX_ACCOUNTS_PER_PLATFORM` | `5` | How many accounts can be connected per platform |
-| `OPENAI_API_KEY` | *(empty)* | Enables Whisper auto-subtitles on every clip |
+| `OPENAI_API_KEY` | *(empty)* | Enables Whisper auto-subtitles + AI titles/hashtags |
 | `SUBTITLES` | `true` | Set `false` to disable subtitles while keeping the key |
+| `GENERATE_METADATA` | `true` | Per-clip AI title/description/hashtags from the transcript |
+| `OPENAI_CHAT_MODEL` | `gpt-4o-mini` | Model used for metadata generation |
 | `CLIP_DURATION_SECONDS` | `120` | Length of each clip |
 | `UPLOAD_INTERVAL_HOURS` | `3` | Gap between consecutive parts |
 | `VERTICAL_FORMAT` | `true` | Render 1080×1920 vertical with blurred background |
@@ -94,6 +96,6 @@ All settings live in `.env` (see `.env.example`):
 
 ## Notes & limits
 
-- Captions/titles are `"{video title} - Part N"` plus the site domain; YouTube titles also get `#Shorts`.
+- When `OPENAI_API_KEY` is set, each clip's transcript is used to generate a unique hook title, a short description and 8-12 discovery hashtags; these become the YouTube title/description and the Instagram/TikTok captions. Without a key (or if generation fails), captions/titles fall back to `"{video title} - Part N/M"` plus the site domain. YouTube titles always get `#Shorts`.
 - YouTube API default quota (10,000 units/day) allows ~6 video uploads per day — request more quota for heavy use.
 - Instagram Reels must be ≤ 15 minutes; 2-minute clips are fine.

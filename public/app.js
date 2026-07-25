@@ -124,9 +124,12 @@ async function loadVideos() {
       const chips = c.uploads.length
         ? `<span class="chips">${c.uploads.map(chip).join("")}</span>`
         : `<span class="clip-when">${when}</span>`;
+      const genTitle = c.genTitle
+        ? `<span class="gen-title">&ldquo;${c.genTitle}&rdquo;</span>`
+        : "";
       return `<div class="clip">
         <span><a href="${c.url}" target="_blank">Part ${c.part}/${c.totalParts}</a>
-          <span class="clip-when">(${Math.round(c.durationSeconds)}s)</span></span>
+          <span class="clip-when">(${Math.round(c.durationSeconds)}s)</span> ${genTitle}</span>
         ${chips}
       </div>`;
     }).join("");

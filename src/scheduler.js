@@ -62,9 +62,30 @@ async function freshAccount(accountId) {
   return account;
 }
 
-function captionFor(video, clip) {
+// Builds the YouTube title and the caption/description text for a clip,
+// preferring the AI-generated metadata and falling back to "<video> - Part N".
+function textsFor(video, clip) {
   const part = clip.total_parts > 1 ? ` - Part ${clip.part_number}/${clip.total_parts}` : "";
-  return `${video.title}${part}\n\n${config.siteDomain}`;
+  const hashtags = JSON.parse(clip.gen_hashtags || "[]").join(" ");
+
+  if (clip.gen_title) {
+    const caption = [
+      `${clip.gen_title}${part}`,
+      clip.gen_description || "",
+      hashtags,
+      config.siteDomain,
+    ].filter(Boolean).join("\n\n");
+    return {
+      // YouTube titles are capped at 100 characters.
+      title: `${clip.gen_title}${part} #Shorts`.slice(0, 100),
+      caption,
+    };
+  }
+
+  return {
+    title: `${video.title}${part} #Shorts`.slice(0, 100),
+    caption: `${video.title}${part}\n\n${config.siteDomain}`,
+  };
 }
 
 async function publish(accountRow, clip, video) {
@@ -81,14 +102,13 @@ async function publish(accountRow, clip, video) {
 
     const filePath = path.join(config.clipsDir, clip.filename);
     const publicUrl = `${config.baseUrl}/clips/${encodeURIComponent(clip.filename)}`;
-    const part = clip.total_parts > 1 ? ` - Part ${clip.part_number}/${clip.total_parts}` : "";
-    const caption = captionFor(video, clip);
+    const { title, caption } = textsFor(video, clip);
 
     let platformVideoId;
     if (account.platform === "youtube") {
       platformVideoId = await youtube.uploadClip(account, {
         filePath,
-        title: `${video.title}${part} #Shorts`,
+        title,
         description: caption,
       });
     } else if (account.platform === "instagram") {

@@ -116,4 +116,15 @@ if (version < 2) {
   db.pragma("user_version = 2");
 }
 
+// v2 -> v3: per-clip AI-generated publishing metadata.
+if (version < 3) {
+  const cols = db.prepare("PRAGMA table_info(clips)").all();
+  for (const col of ["gen_title", "gen_description", "gen_hashtags"]) {
+    if (!cols.some((c) => c.name === col)) {
+      db.exec(`ALTER TABLE clips ADD COLUMN ${col} TEXT`);
+    }
+  }
+  db.pragma("user_version = 3");
+}
+
 export default db;

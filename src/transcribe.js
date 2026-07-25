@@ -119,9 +119,9 @@ ${events.join("\n")}
 }
 
 // Transcribes the [start, start+length] window of the source video and writes
-// an .ass subtitle file for the clip. Returns the .ass path, or null when the
-// clip has no usable speech. Timestamps are relative to the clip start because
-// only that window's audio is sent for transcription.
+// an .ass subtitle file for the clip. Returns {assPath, transcript}, or null
+// when the clip has no usable speech. Timestamps are relative to the clip
+// start because only that window's audio is sent for transcription.
 export async function generateClipSubtitles({ inputPath, start, length, outBase, width, height }) {
   const audioPath = `${outBase}.mp3`;
   try {
@@ -137,7 +137,7 @@ export async function generateClipSubtitles({ inputPath, start, length, outBase,
     if (!ass) return null;
     const assPath = `${outBase}.ass`;
     fs.writeFileSync(assPath, ass);
-    return assPath;
+    return { assPath, transcript: words.map((w) => w.word).join(" ") };
   } finally {
     fs.rmSync(audioPath, { force: true });
   }
