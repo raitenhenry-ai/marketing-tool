@@ -36,8 +36,10 @@ docker run -d --name shortform -p 3000:3000 \
 
 On Railway/Render/Fly the Dockerfile is detected automatically; set the
 environment variables from `.env.example` in their dashboard, attach a
-persistent volume at `/app/data`, and set `BASE_URL` to the public URL the
-platform gives you (then register that URL in each platform's OAuth settings).
+persistent volume **mounted at `/app/data`** (Railway: service → Volumes →
+Add Volume; without it the queue and clips are lost on every deploy), and
+set `BASE_URL` to the public URL the platform gives you (then register that
+URL in each platform's OAuth settings).
 
 ## Setup
 
