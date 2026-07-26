@@ -16,7 +16,7 @@ export function authUrl(state) {
   const params = new URLSearchParams({
     client_key: config.tiktok.clientKey,
     response_type: "code",
-    scope: "user.info.basic,video.publish,video.list",
+    scope: config.tiktok.scopes,
     redirect_uri: redirectUri(),
     state,
   });

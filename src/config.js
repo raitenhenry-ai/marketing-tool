@@ -77,6 +77,9 @@ const config = {
     clientKey: process.env.TIKTOK_CLIENT_KEY || "",
     clientSecret: process.env.TIKTOK_CLIENT_SECRET || "",
     privacyLevel: process.env.TIKTOK_PRIVACY_LEVEL || "SELF_ONLY",
+    // Must match the scopes approved for your TikTok app. video.list powers
+    // the Analytics metrics; drop it if your app doesn't have that scope.
+    scopes: process.env.TIKTOK_SCOPES || "user.info.basic,video.publish,video.list",
   },
   facebook: {
     appId: process.env.FACEBOOK_APP_ID || "",
