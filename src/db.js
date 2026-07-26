@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   external_id TEXT,
   display_name TEXT,
   connected_at BIGINT NOT NULL,
+  min_gap_hours DOUBLE PRECISION NOT NULL DEFAULT 0,
   UNIQUE (platform, external_id)
 );
 CREATE TABLE IF NOT EXISTS videos (
@@ -106,6 +107,9 @@ if (config.databaseUrl) {
   // Upgrades for Postgres databases created by earlier versions.
   await pool.query(
     "ALTER TABLE videos ADD COLUMN IF NOT EXISTS publish_mode TEXT NOT NULL DEFAULT 'manual'"
+  );
+  await pool.query(
+    "ALTER TABLE accounts ADD COLUMN IF NOT EXISTS min_gap_hours DOUBLE PRECISION NOT NULL DEFAULT 0"
   );
   console.log("[db] connected to Postgres");
 } else {
@@ -259,5 +263,14 @@ CREATE TABLE IF NOT EXISTS uploads (
       db.exec("ALTER TABLE videos ADD COLUMN publish_mode TEXT NOT NULL DEFAULT 'manual'");
     }
     db.pragma("user_version = 5");
+  }
+
+  // v5 -> v6: per-account minimum gap between posts.
+  if (version < 6) {
+    const cols = db.prepare("PRAGMA table_info(accounts)").all();
+    if (!cols.some((c) => c.name === "min_gap_hours")) {
+      db.exec("ALTER TABLE accounts ADD COLUMN min_gap_hours REAL NOT NULL DEFAULT 0");
+    }
+    db.pragma("user_version = 6");
   }
 }

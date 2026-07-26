@@ -225,6 +225,19 @@ async function tick() {
           Number(upload.next_attempt_at) <= Date.now();
         if (upload && !retryDue) continue;
 
+        // Per-account rate limit: hold the post until this account's minimum
+        // gap since its last successful post has passed. The clip stays due,
+        // so it publishes automatically on a later tick.
+        const gapMs = Number(account.min_gap_hours || 0) * 3600 * 1000;
+        if (gapMs > 0) {
+          const last = await q1(
+            "SELECT MAX(uploaded_at) AS t FROM uploads WHERE account_id = ? AND status = 'done'",
+            [account.id]
+          );
+          const lastPost = Number(last?.t || 0);
+          if (lastPost && Date.now() - lastPost < gapMs) continue;
+        }
+
         await publish(account, clip, { title: clip.title });
       }
     }

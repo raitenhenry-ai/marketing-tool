@@ -43,9 +43,10 @@ router.get("/accounts", wrap(async (req, res) => {
   const byPlatform = Object.fromEntries(PLATFORM_KEYS.map((k) => [k, []]));
   const rows = await q(
     `SELECT accounts.id, accounts.platform, accounts.display_name, accounts.connected_at,
-            COUNT(video_accounts.video_id) AS videos_assigned
+            accounts.min_gap_hours, COUNT(video_accounts.video_id) AS videos_assigned
      FROM accounts LEFT JOIN video_accounts ON video_accounts.account_id = accounts.id
-     GROUP BY accounts.id, accounts.platform, accounts.display_name, accounts.connected_at
+     GROUP BY accounts.id, accounts.platform, accounts.display_name, accounts.connected_at,
+              accounts.min_gap_hours
      ORDER BY accounts.id`
   );
   for (const a of rows) {
@@ -54,6 +55,7 @@ router.get("/accounts", wrap(async (req, res) => {
       displayName: a.display_name,
       connectedAt: Number(a.connected_at),
       videosAssigned: Number(a.videos_assigned),
+      minGapHours: Number(a.min_gap_hours || 0),
     });
   }
   res.json({
@@ -68,6 +70,17 @@ router.get("/accounts", wrap(async (req, res) => {
       subtitlesEnabled: subtitlesEnabled(),
     },
   });
+}));
+
+router.patch("/accounts/:id", wrap(async (req, res) => {
+  const account = await q1("SELECT id FROM accounts WHERE id = ?", [req.params.id]);
+  if (!account) return res.status(404).json({ error: "Account not found" });
+  const gap = Number(req.body.minGapHours);
+  if (!Number.isFinite(gap) || gap < 0 || gap > 168) {
+    return res.status(400).json({ error: "minGapHours must be between 0 and 168" });
+  }
+  await dbRun("UPDATE accounts SET min_gap_hours = ? WHERE id = ?", [gap, account.id]);
+  res.json({ ok: true });
 }));
 
 router.post("/videos", upload.single("video"), wrap(async (req, res) => {

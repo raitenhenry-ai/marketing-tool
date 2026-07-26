@@ -22,6 +22,23 @@ if (params.get("connected")) {
   history.replaceState(null, "", "/accounts.html");
 }
 
+document.addEventListener("change", async (e) => {
+  const select = e.target.closest("[data-gap-account]");
+  if (!select) return;
+  try {
+    await api(`/api/accounts/${select.dataset.gapAccount}`, {
+      method: "PATCH",
+      body: JSON.stringify({ minGapHours: Number(select.value) }),
+    });
+    toast(Number(select.value)
+      ? `Saved — this account now posts at most once every ${select.options[select.selectedIndex].text.toLowerCase()}`
+      : "Saved — no posting limit on this account");
+  } catch (err) {
+    toast(err.message, "error");
+    load();
+  }
+});
+
 document.addEventListener("click", async (e) => {
   const btn = e.target.closest("[data-disconnect]");
   if (!btn) return;
@@ -38,6 +55,27 @@ document.addEventListener("click", async (e) => {
   } catch (err) { toast(String(err.message || err), "error"); }
 });
 
+const GAP_OPTIONS = [
+  [0, "No limit"],
+  [1, "1 hour"], [2, "2 hours"], [3, "3 hours"], [4, "4 hours"],
+  [6, "6 hours"], [8, "8 hours"], [12, "12 hours"],
+  [24, "1 day"], [48, "2 days"], [72, "3 days"], [168, "1 week"],
+];
+
+function gapSelect(a) {
+  const current = Number(a.minGapHours || 0);
+  const options = GAP_OPTIONS.some(([v]) => v === current)
+    ? GAP_OPTIONS
+    : [...GAP_OPTIONS, [current, `${current} hours`]].sort((x, y) => x[0] - y[0]);
+  return `<label class="gap-control" title="Minimum time between posts on this account">
+    <span>posts at most every</span>
+    <select class="input input-sm" data-gap-account="${a.id}">
+      ${options.map(([v, label]) =>
+        `<option value="${v}" ${v === current ? "selected" : ""}>${label}</option>`).join("")}
+    </select>
+  </label>`;
+}
+
 function platformCard(key, info, max) {
   const n = info.accounts.length;
 
@@ -49,6 +87,7 @@ function platformCard(key, info, max) {
         <div class="account-meta">connected ${fmtDateTime(a.connectedAt)} · ${a.videosAssigned} video(s) assigned</div>
       </div>
       <div class="spacer"></div>
+      ${gapSelect(a)}
       <button class="btn btn-sm btn-ghost" data-disconnect="${a.id}" data-name="${esc(a.displayName || "this account")}">Disconnect</button>
     </div>`).join("");
 
