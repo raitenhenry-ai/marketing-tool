@@ -12,9 +12,9 @@ import { parseCuts } from "../cuts.js";
 import { deleteVideoFiles } from "../cleanup.js";
 import { authEnabled } from "../auth.js";
 import { refreshMetrics, metricsStatus } from "../metrics.js";
-import * as youtube from "../platforms/youtube.js";
-import * as instagram from "../platforms/instagram.js";
-import * as tiktok from "../platforms/tiktok.js";
+import { platforms } from "../scheduler.js";
+
+const PLATFORM_KEYS = Object.keys(platforms); // youtube, instagram, tiktok, facebook, x
 
 const router = Router();
 
@@ -33,7 +33,7 @@ const upload = multer({
 });
 
 router.get("/accounts", (req, res) => {
-  const byPlatform = { youtube: [], instagram: [], tiktok: [] };
+  const byPlatform = Object.fromEntries(PLATFORM_KEYS.map((k) => [k, []]));
   for (const a of db.prepare(
     `SELECT accounts.id, accounts.platform, accounts.display_name, accounts.connected_at,
             COUNT(video_accounts.video_id) AS videos_assigned
@@ -48,11 +48,9 @@ router.get("/accounts", (req, res) => {
     });
   }
   res.json({
-    platforms: {
-      youtube: { configured: youtube.isConfigured(), accounts: byPlatform.youtube },
-      instagram: { configured: instagram.isConfigured(), accounts: byPlatform.instagram },
-      tiktok: { configured: tiktok.isConfigured(), accounts: byPlatform.tiktok },
-    },
+    platforms: Object.fromEntries(PLATFORM_KEYS.map((k) => [
+      k, { configured: platforms[k].isConfigured(), accounts: byPlatform[k] },
+    ])),
     settings: {
       siteDomain: config.siteDomain,
       clipDurationSeconds: config.clipDurationSeconds,
@@ -403,16 +401,12 @@ router.get("/settings", (req, res) => {
       uptimeSeconds: Math.round(process.uptime()),
       queueDepth: queueLength(),
       nodeVersion: process.version,
-      redirectUris: {
-        youtube: `${config.baseUrl}/auth/youtube/callback`,
-        instagram: `${config.baseUrl}/auth/instagram/callback`,
-        tiktok: `${config.baseUrl}/auth/tiktok/callback`,
-      },
-      credentialsConfigured: {
-        youtube: youtube.isConfigured(),
-        instagram: instagram.isConfigured(),
-        tiktok: tiktok.isConfigured(),
-      },
+      redirectUris: Object.fromEntries(
+        PLATFORM_KEYS.map((k) => [k, `${config.baseUrl}/auth/${k}/callback`])
+      ),
+      credentialsConfigured: Object.fromEntries(
+        PLATFORM_KEYS.map((k) => [k, platforms[k].isConfigured()])
+      ),
     },
   });
 });

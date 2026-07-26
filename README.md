@@ -1,6 +1,6 @@
 # Short-Form Content Manager
 
-Turn one long-form video into a scheduled series of short clips, published automatically to **YouTube (Shorts)**, **Instagram (Reels)** and **TikTok**.
+Turn one long-form video into a scheduled series of short clips, published automatically to **YouTube (Shorts)**, **Instagram (Reels)**, **TikTok**, **Facebook (Page Reels)** and **X**.
 
 How it works:
 
@@ -68,6 +68,18 @@ The server's **public URL** (`BASE_URL` in `.env`) must be registered as the OAu
 2. Add redirect URI `{BASE_URL}/auth/tiktok/callback`.
 3. Put the client key/secret in `.env` (`TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`).
 4. Note: until your TikTok app passes their audit, posts can only be `SELF_ONLY` (private). Switch `TIKTOK_PRIVACY_LEVEL=PUBLIC_TO_EVERYONE` once audited.
+
+**Facebook**
+1. In a Meta developer app (the Instagram one or a new one), add the **Facebook Login** product with permissions `pages_show_list`, `pages_manage_posts`, `pages_read_engagement`.
+2. Add redirect URI `{BASE_URL}/auth/facebook/callback`.
+3. Put the app ID/secret in `.env` (`FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`).
+4. Clips publish as **Reels on Facebook Pages** — connecting adds every Page you manage as its own account (Page tokens don't expire).
+
+**X (Twitter)**
+1. Create an app at [developer.x.com](https://developer.x.com) with **OAuth 2.0** enabled (type: Web App, confidential client).
+2. Add redirect URI `{BASE_URL}/auth/x/callback`.
+3. Put the OAuth 2 client ID/secret in `.env` (`X_CLIENT_ID`, `X_CLIENT_SECRET`).
+4. Clips publish as video posts; captions are trimmed to X's 280-character limit. The free API tier allows a limited number of posts per day.
 
 ## Configuration
 

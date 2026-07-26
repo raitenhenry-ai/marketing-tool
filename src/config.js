@@ -75,6 +75,14 @@ const config = {
     clientSecret: process.env.TIKTOK_CLIENT_SECRET || "",
     privacyLevel: process.env.TIKTOK_PRIVACY_LEVEL || "SELF_ONLY",
   },
+  facebook: {
+    appId: process.env.FACEBOOK_APP_ID || "",
+    appSecret: process.env.FACEBOOK_APP_SECRET || "",
+  },
+  x: {
+    clientId: process.env.X_CLIENT_ID || "",
+    clientSecret: process.env.X_CLIENT_SECRET || "",
+  },
 };
 
 try {

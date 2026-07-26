@@ -4,8 +4,10 @@ import path from "node:path";
 import * as youtube from "./platforms/youtube.js";
 import * as instagram from "./platforms/instagram.js";
 import * as tiktok from "./platforms/tiktok.js";
+import * as facebook from "./platforms/facebook.js";
+import * as x from "./platforms/x.js";
 
-const platforms = { youtube, instagram, tiktok };
+export const platforms = { youtube, instagram, tiktok, facebook, x };
 
 const MAX_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 10 * 60 * 1000;
@@ -104,18 +106,13 @@ async function publish(accountRow, clip, video) {
     const publicUrl = `${config.baseUrl}/clips/${encodeURIComponent(clip.filename)}`;
     const { title, caption } = textsFor(video, clip);
 
-    let platformVideoId;
-    if (account.platform === "youtube") {
-      platformVideoId = await youtube.uploadClip(account, {
-        filePath,
-        title,
-        description: caption,
-      });
-    } else if (account.platform === "instagram") {
-      platformVideoId = await instagram.uploadClip(account, { publicUrl, caption });
-    } else {
-      platformVideoId = await tiktok.uploadClip(account, { filePath, title: caption });
-    }
+    const platformVideoId = await platforms[account.platform].uploadClip(account, {
+      filePath,
+      publicUrl,
+      title,
+      caption,
+      description: caption,
+    });
 
     db.prepare(
       `UPDATE uploads SET status = 'done', platform_video_id = ?, error = NULL, uploaded_at = ?

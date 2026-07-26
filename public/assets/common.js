@@ -7,6 +7,8 @@ export const PLATFORMS = {
   youtube: "YouTube",
   instagram: "Instagram",
   tiktok: "TikTok",
+  facebook: "Facebook",
+  x: "X",
 };
 
 /* ---------- Icons (inline SVG, stroke-based) ---------- */
@@ -41,6 +43,8 @@ export const icons = {
   youtube: stroke('<path d="M22.5 6.4a3 3 0 0 0-2.1-2.1C18.5 3.8 12 3.8 12 3.8s-6.5 0-8.4.5A3 3 0 0 0 1.5 6.4 31 31 0 0 0 1 12a31 31 0 0 0 .5 5.6 3 3 0 0 0 2.1 2.1c1.9.5 8.4.5 8.4.5s6.5 0 8.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 23 12a31 31 0 0 0-.5-5.6z"/><polygon points="10 15 15 12 10 9"/>'),
   instagram: stroke('<rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>'),
   tiktok: stroke('<path d="M9 12a4 4 0 1 0 4 4V4c.7 2.3 2.7 4.6 6 5"/>'),
+  facebook: stroke('<path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>'),
+  x: stroke('<path d="M4 4l16 16M20 4L4 20"/>'),
 };
 
 /* ---------- Formatters ---------- */

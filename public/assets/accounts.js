@@ -8,6 +8,8 @@ const DESCRIPTIONS = {
   youtube: "Clips publish as Shorts via the YouTube Data API.",
   instagram: "Clips publish as Reels. Requires a Business or Creator account.",
   tiktok: "Clips publish via the Content Posting API.",
+  facebook: "Clips publish as Reels on your Facebook Pages — connecting adds every Page you manage.",
+  x: "Clips publish as video posts via the X API.",
 };
 
 // Surface OAuth results passed back through the URL after a connect redirect.
@@ -78,7 +80,7 @@ async function load() {
   try {
     const data = await api("/api/accounts");
     const max = data.settings.maxAccountsPerPlatform;
-    $("#platforms-host").innerHTML = ["youtube", "instagram", "tiktok"]
+    $("#platforms-host").innerHTML = Object.keys(data.platforms)
       .map((key) => platformCard(key, data.platforms[key], max)).join("");
   } catch { /* auth redirect */ }
 }

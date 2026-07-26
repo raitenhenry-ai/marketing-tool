@@ -60,15 +60,13 @@ async function load() {
 
     kvSection("Accounts", [
       ["Max accounts per platform", String(s.accounts.maxPerPlatform)],
-      ["Platform API credentials", ["youtube", "instagram", "tiktok"].map((p) =>
+      ["Platform API credentials", Object.keys(s.server.credentialsConfigured).map((p) =>
         `<span class="chip"><span class="pdot ${p}"></span>${PLATFORMS[p]} ${onOff(s.server.credentialsConfigured[p], "set", "missing")}</span>`).join(" ")],
     ], "MAX_ACCOUNTS_PER_PLATFORM"),
 
-    kvSection("OAuth redirect URIs", [
-      ["YouTube", copyable(s.server.redirectUris.youtube)],
-      ["Instagram", copyable(s.server.redirectUris.instagram)],
-      ["TikTok", copyable(s.server.redirectUris.tiktok)],
-    ], "register these in each platform's developer console"),
+    kvSection("OAuth redirect URIs",
+      Object.entries(s.server.redirectUris).map(([p, uri]) => [PLATFORMS[p] || p, copyable(uri)]),
+      "register these in each platform's developer console"),
 
     kvSection("Disk cleanup", [
       ["Delete originals after", s.cleanup.deleteOriginalsAfterDays > 0

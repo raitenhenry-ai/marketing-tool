@@ -130,7 +130,8 @@ export async function fetchStats(account, videoIds) {
   return stats;
 }
 
-export async function uploadClip(account, { filePath, title }) {
+export async function uploadClip(account, { filePath, caption, title }) {
+  const text = caption || title || "";
   const size = fs.statSync(filePath).size;
 
   // TikTok chunk rules: every chunk except the last must be 5MB-64MB, and the
@@ -148,7 +149,7 @@ export async function uploadClip(account, { filePath, title }) {
     },
     body: JSON.stringify({
       post_info: {
-        title,
+        title: text,
         privacy_level: config.tiktok.privacyLevel,
         disable_duet: false,
         disable_comment: false,

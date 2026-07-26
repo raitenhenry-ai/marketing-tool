@@ -47,9 +47,10 @@ async function render() {
     }),
     statTile({
       icon: "accounts", label: "Connected accounts", value: t.accounts,
-      sub: ["youtube", "instagram", "tiktok"]
-        .map((p) => `${stats.accountsByPlatform[p] || 0} ${PLATFORMS[p]}`)
-        .join(" · "),
+      sub: Object.keys(PLATFORMS)
+        .filter((p) => stats.accountsByPlatform[p])
+        .map((p) => `${stats.accountsByPlatform[p]} ${PLATFORMS[p]}`)
+        .join(" · ") || "none connected yet",
     }),
   ].join("");
 

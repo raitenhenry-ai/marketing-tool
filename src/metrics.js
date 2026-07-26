@@ -1,8 +1,5 @@
 import db from "./db.js";
-import { freshAccount } from "./scheduler.js";
-import * as youtube from "./platforms/youtube.js";
-import * as instagram from "./platforms/instagram.js";
-import * as tiktok from "./platforms/tiktok.js";
+import { freshAccount, platforms } from "./scheduler.js";
 
 const REFRESH_INTERVAL_MS = 6 * 3600 * 1000;
 
@@ -58,38 +55,35 @@ export async function refreshMetrics() {
 async function refreshForAccount(account, rows) {
   const now = Date.now();
   const save = saveMetrics();
+  const platform = platforms[account.platform];
+  if (!platform?.fetchStats) return 0;
   let updated = 0;
 
-  if (account.platform === "youtube") {
-    const ids = rows.map((r) => r.platform_video_id);
-    const stats = await youtube.fetchStats(account, ids);
-    for (const row of rows) {
-      const s = stats[row.platform_video_id];
-      if (s) { save.run(JSON.stringify(s), now, row.id); updated++; }
-    }
-  } else if (account.platform === "instagram") {
-    const stats = await instagram.fetchStats(account, rows.map((r) => r.platform_video_id));
-    for (const row of rows) {
-      const s = stats[row.platform_video_id];
-      if (s) { save.run(JSON.stringify(s), now, row.id); updated++; }
-    }
-  } else if (account.platform === "tiktok") {
-    // Resolve public post ids for uploads that only have the publish id yet.
+  if (account.platform === "tiktok") {
+    // TikTok's publish flow returns an internal id; resolve the public post
+    // id first for any upload that doesn't have one yet.
     const setPostId = db.prepare("UPDATE uploads SET public_post_id = ? WHERE id = ?");
     for (const row of rows) {
       if (!row.public_post_id) {
-        const postId = await tiktok.resolvePostId(account, row.platform_video_id);
+        const postId = await platform.resolvePostId(account, row.platform_video_id);
         if (postId) { setPostId.run(postId, row.id); row.public_post_id = postId; }
       }
     }
     const resolvable = rows.filter((r) => r.public_post_id);
     if (resolvable.length) {
-      const stats = await tiktok.fetchStats(account, resolvable.map((r) => r.public_post_id));
+      const stats = await platform.fetchStats(account, resolvable.map((r) => r.public_post_id));
       for (const row of resolvable) {
         const s = stats[row.public_post_id];
         if (s) { save.run(JSON.stringify(s), now, row.id); updated++; }
       }
     }
+    return updated;
+  }
+
+  const stats = await platform.fetchStats(account, rows.map((r) => r.platform_video_id));
+  for (const row of rows) {
+    const s = stats[row.platform_video_id];
+    if (s) { save.run(JSON.stringify(s), now, row.id); updated++; }
   }
   return updated;
 }
