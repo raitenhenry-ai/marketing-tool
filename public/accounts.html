@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Accounts · ShortForm Manager</title>
+  <link rel="stylesheet" href="/assets/base.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside id="sidebar"></aside>
+    <div class="main">
+      <header id="topbar"></header>
+      <main class="content page-fade">
+        <div id="banner-host"></div>
+        <div id="platforms-host">
+          <div class="card platform-card"><div class="skeleton" style="height:110px"></div></div>
+          <div class="card platform-card"><div class="skeleton" style="height:110px"></div></div>
+          <div class="card platform-card"><div class="skeleton" style="height:110px"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">How account rotation works</div>
+          <p class="muted" style="font-size:13.5px">
+            Each video is pinned to <strong>one account per platform</strong> — the least-used
+            one at the moment its first part publishes — and every part of that video stays on
+            that same account. Consecutive videos rotate across your connected accounts
+            automatically. Reconnecting an account that is already linked just refreshes its
+            tokens and doesn't use up a slot.
+          </p>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script type="module" src="/assets/accounts.js"></script>
+</body>
+</html>

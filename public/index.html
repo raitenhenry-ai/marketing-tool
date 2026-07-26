@@ -3,58 +3,44 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Short-Form Content Manager</title>
-  <link rel="stylesheet" href="/styles.css" />
+  <title>Dashboard · ShortForm Manager</title>
+  <link rel="stylesheet" href="/assets/base.css" />
 </head>
 <body>
-  <header>
-    <h1>Short-Form Content Manager</h1>
-    <p class="sub">Upload a long-form video &rarr; it's split into <span id="clip-len">2-minute</span> parts and published every <span id="interval">3 hours</span> to your connected accounts. <span id="subs-note"></span></p>
-  </header>
+  <div class="shell">
+    <aside id="sidebar"></aside>
+    <div class="main">
+      <header id="topbar"></header>
+      <main class="content page-fade">
 
-  <main>
-    <div id="banner" class="banner hidden"></div>
-
-    <section>
-      <h2>1. Connect accounts</h2>
-      <div class="cards" id="accounts">
-        <div class="card" data-platform="youtube">
-          <div class="card-head"><span class="dot"></span> YouTube</div>
-          <div class="card-status">Loading&hellip;</div>
-          <div class="card-actions"></div>
+        <div class="grid grid-4 mb-24" id="stat-tiles">
+          <div class="stat"><div class="skeleton" style="height:52px"></div></div>
+          <div class="stat"><div class="skeleton" style="height:52px"></div></div>
+          <div class="stat"><div class="skeleton" style="height:52px"></div></div>
+          <div class="stat"><div class="skeleton" style="height:52px"></div></div>
         </div>
-        <div class="card" data-platform="instagram">
-          <div class="card-head"><span class="dot"></span> Instagram</div>
-          <div class="card-status">Loading&hellip;</div>
-          <div class="card-actions"></div>
+
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="card-title">Next publishes <span class="hint" id="queue-hint"></span></div>
+            <div id="next-publishes"><div class="skeleton" style="height:120px"></div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Recent activity</div>
+            <div id="recent-activity"><div class="skeleton" style="height:120px"></div></div>
+          </div>
         </div>
-        <div class="card" data-platform="tiktok">
-          <div class="card-head"><span class="dot"></span> TikTok</div>
-          <div class="card-status">Loading&hellip;</div>
-          <div class="card-actions"></div>
+
+        <div class="card mt-16">
+          <div class="card-title">Platform connections</div>
+          <div id="platform-summary" class="flex" style="flex-wrap:wrap; gap:10px">
+            <div class="skeleton" style="height:28px;width:340px"></div>
+          </div>
         </div>
-      </div>
-    </section>
 
-    <section>
-      <h2>2. Upload a long-form video</h2>
-      <form id="upload-form">
-        <input type="text" id="title" name="title" placeholder="Video title (used in captions)" />
-        <input type="file" id="file" name="video" accept="video/*" required />
-        <textarea id="cuts" name="cuts" rows="3" placeholder="Optional: custom cut times. Leave empty to auto-split into equal parts.
-Cut points - splits at these times:  2:00, 5:30, 9:15
-Or exact ranges (one per line, skipped footage is dropped):  0:30-2:10"></textarea>
-        <button type="submit" id="upload-btn">Upload &amp; split</button>
-        <progress id="upload-progress" class="hidden" max="100" value="0"></progress>
-      </form>
-    </section>
-
-    <section>
-      <h2>3. Clip queue</h2>
-      <div id="videos"></div>
-    </section>
-  </main>
-
-  <script src="/app.js"></script>
+      </main>
+    </div>
+  </div>
+  <script type="module" src="/assets/dashboard.js"></script>
 </body>
 </html>

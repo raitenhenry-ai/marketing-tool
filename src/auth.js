@@ -65,7 +65,10 @@ function loginPage(error) {
   .err{color:#d89f9f;font-size:.85rem;margin-bottom:12px}
 </style></head><body>
 <form method="post" action="/login">
-  <h1>Short-Form Content Manager</h1>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+    <div style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#3b76f0,#7a4ff0);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800">▶</div>
+    <div><div style="font-weight:700">ShortForm</div><div style="font-size:11px;color:#6d7688;margin-top:-3px">content manager</div></div>
+  </div>
   ${error ? '<div class="err">Wrong password, try again.</div>' : ""}
   <input type="password" name="password" placeholder="Password" autofocus required>
   <button type="submit">Sign in</button>

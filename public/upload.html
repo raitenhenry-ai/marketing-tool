@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Upload · ShortForm Manager</title>
+  <link rel="stylesheet" href="/assets/base.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside id="sidebar"></aside>
+    <div class="main">
+      <header id="topbar"></header>
+      <main class="content page-fade">
+        <div class="grid grid-2" style="grid-template-columns: 3fr 2fr; align-items: start;">
+
+          <div class="card">
+            <div class="card-title">New long-form video</div>
+
+            <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Choose a video file">
+              <div id="dz-idle">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <div class="dz-title">Drop your video here, or click to browse</div>
+                <div class="dz-sub">MP4, MOV, MKV… anything ffmpeg can read</div>
+              </div>
+              <div id="dz-file" hidden></div>
+            </div>
+            <input type="file" id="file" accept="video/*" hidden />
+
+            <div class="field mt-16">
+              <label for="title">Title</label>
+              <input class="input" type="text" id="title" placeholder="Used in captions and as the fallback post title" />
+            </div>
+
+            <div class="field">
+              <label for="cuts">Cut times <span class="muted">(optional)</span></label>
+              <textarea class="input" id="cuts" rows="3"
+                placeholder="Leave empty to auto-split into equal parts&#10;Cut points:  2:00, 5:30, 9:15&#10;Or ranges (one per line):  0:30-2:10"></textarea>
+              <div class="help" id="cuts-preview">Auto-split into equal parts.</div>
+            </div>
+
+            <div class="flex">
+              <button class="btn btn-lg" id="upload-btn" disabled>Upload &amp; split</button>
+              <div class="spacer"></div>
+              <span class="muted" id="upload-status"></span>
+            </div>
+            <div class="mt-16" id="progress-wrap" hidden>
+              <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+            </div>
+          </div>
+
+          <div>
+            <div class="card">
+              <div class="card-title">What happens next</div>
+              <div id="pipeline-info"><div class="skeleton" style="height:150px"></div></div>
+            </div>
+            <div class="card mt-16">
+              <div class="card-title">Publish schedule preview</div>
+              <div id="schedule-preview" class="muted" style="font-size:13px">
+                Pick a file to preview when each part will publish.
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </main>
+    </div>
+  </div>
+  <script type="module" src="/assets/upload.js"></script>
+</body>
+</html>

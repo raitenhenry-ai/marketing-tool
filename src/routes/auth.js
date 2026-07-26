@@ -21,7 +21,7 @@ router.get("/:platform", (req, res) => {
     .get(req.params.platform).n;
   if (count >= config.maxAccountsPerPlatform) {
     return res.redirect(
-      `/?connect_error=${encodeURIComponent(
+      `/accounts.html?connect_error=${encodeURIComponent(
         `Limit of ${config.maxAccountsPerPlatform} ${req.params.platform} accounts reached - disconnect one first`
       )}`
     );
@@ -36,10 +36,10 @@ router.get("/:platform/callback", async (req, res) => {
 
   const { code, state, error, error_description: errorDescription } = req.query;
   if (error) {
-    return res.redirect(`/?connect_error=${encodeURIComponent(errorDescription || error)}`);
+    return res.redirect(`/accounts.html?connect_error=${encodeURIComponent(errorDescription || error)}`);
   }
   if (!code || !consumeState(state, name)) {
-    return res.redirect(`/?connect_error=${encodeURIComponent("Invalid OAuth state, try again")}`);
+    return res.redirect(`/accounts.html?connect_error=${encodeURIComponent("Invalid OAuth state, try again")}`);
   }
 
   try {
@@ -55,7 +55,7 @@ router.get("/:platform/callback", async (req, res) => {
       const count = db.prepare("SELECT COUNT(*) AS n FROM accounts WHERE platform = ?").get(name).n;
       if (count >= config.maxAccountsPerPlatform) {
         return res.redirect(
-          `/?connect_error=${encodeURIComponent(
+          `/accounts.html?connect_error=${encodeURIComponent(
             `Limit of ${config.maxAccountsPerPlatform} ${name} accounts reached - disconnect one first`
           )}`
         );
@@ -80,10 +80,10 @@ router.get("/:platform/callback", async (req, res) => {
       account.displayName,
       Date.now()
     );
-    res.redirect("/?connected=" + name);
+    res.redirect("/accounts.html?connected=" + name);
   } catch (err) {
     console.error(`[auth] ${name} callback failed:`, err);
-    res.redirect(`/?connect_error=${encodeURIComponent(String(err.message || err))}`);
+    res.redirect(`/accounts.html?connect_error=${encodeURIComponent(String(err.message || err))}`);
   }
 });
 

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Schedule · ShortForm Manager</title>
+  <link rel="stylesheet" href="/assets/base.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside id="sidebar"></aside>
+    <div class="main">
+      <header id="topbar"></header>
+      <main class="content page-fade">
+
+        <div class="toolbar">
+          <div class="tabs" id="view-tabs">
+            <button class="tab active" data-view="upcoming">Upcoming <span class="count" id="count-upcoming"></span></button>
+            <button class="tab" data-view="history">History <span class="count" id="count-history"></span></button>
+          </div>
+        </div>
+
+        <div id="schedule-host">
+          <div class="card"><div class="skeleton" style="height:200px"></div></div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+  <script type="module" src="/assets/schedule.js"></script>
+</body>
+</html>

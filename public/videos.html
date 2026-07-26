@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Videos · ShortForm Manager</title>
+  <link rel="stylesheet" href="/assets/base.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside id="sidebar"></aside>
+    <div class="main">
+      <header id="topbar"></header>
+      <main class="content page-fade">
+
+        <div class="toolbar">
+          <div class="tabs" id="status-tabs">
+            <button class="tab active" data-filter="all">All <span class="count" id="count-all"></span></button>
+            <button class="tab" data-filter="processing">Processing <span class="count" id="count-processing"></span></button>
+            <button class="tab" data-filter="ready">Ready <span class="count" id="count-ready"></span></button>
+            <button class="tab" data-filter="failed">Failed <span class="count" id="count-failed"></span></button>
+          </div>
+          <input class="input" type="search" id="search" placeholder="Search videos…" />
+        </div>
+
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Video</th>
+                <th>Status</th>
+                <th>Parts</th>
+                <th>Publishes to</th>
+                <th>Next publish</th>
+                <th style="width:1%"></th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+        <div id="empty-host"></div>
+
+      </main>
+    </div>
+  </div>
+  <script type="module" src="/assets/videos.js"></script>
+</body>
+</html>
