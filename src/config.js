@@ -5,6 +5,10 @@ import { fileURLToPath } from "node:url";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
+// Credentials pasted into env panels often pick up trailing whitespace or
+// newlines, which platforms reject as "incorrect secret". Always trim.
+const env = (name, fallback = "") => (process.env[name] ?? fallback).trim();
+
 function firstExisting(candidates) {
   for (const p of candidates) {
     if (p && fs.existsSync(p)) return p;
@@ -15,7 +19,7 @@ function firstExisting(candidates) {
 const config = {
   rootDir,
   port: Number(process.env.PORT || 3000),
-  baseUrl: (process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/+$/, ""),
+  baseUrl: env("BASE_URL", `http://localhost:${process.env.PORT || 3000}`).replace(/\/+$/, ""),
 
   siteDomain: process.env.SITE_DOMAIN || "www.clint.build",
   clipDurationSeconds: Number(process.env.CLIP_DURATION_SECONDS || 120),
@@ -23,7 +27,7 @@ const config = {
   maxAccountsPerPlatform: Number(process.env.MAX_ACCOUNTS_PER_PLATFORM || 5),
 
   // Dashboard login; empty = no auth (local use only).
-  adminPassword: process.env.ADMIN_PASSWORD || "",
+  adminPassword: env("ADMIN_PASSWORD"),
   // Days before original uploads / whole videos are cleaned from disk.
   deleteOriginalsAfterDays: Number(process.env.DELETE_ORIGINALS_AFTER_DAYS ?? 7),
   pruneVideosAfterDays: Number(process.env.PRUNE_VIDEOS_AFTER_DAYS ?? 0),
@@ -39,14 +43,14 @@ const config = {
   verticalHeight: Number(process.env.VERTICAL_HEIGHT || 1920),
 
   // Auto-subtitles via OpenAI Whisper; disabled when no API key is set.
-  openaiApiKey: process.env.OPENAI_API_KEY || "",
+  openaiApiKey: env("OPENAI_API_KEY"),
   subtitles: (process.env.SUBTITLES || "true").toLowerCase() !== "false",
   // Per-clip AI titles/descriptions/hashtags from the transcript.
   generateMetadata: (process.env.GENERATE_METADATA || "true").toLowerCase() !== "false",
   openaiChatModel: process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini",
 
   // Postgres/Neon connection string; empty = local SQLite in data/app.db.
-  databaseUrl: process.env.DATABASE_URL || "",
+  databaseUrl: env("DATABASE_URL"),
 
   dataDir: path.join(rootDir, "data"),
   uploadsDir: path.join(rootDir, "data", "uploads"),
@@ -65,29 +69,29 @@ const config = {
   ]),
 
   youtube: {
-    clientId: process.env.YOUTUBE_CLIENT_ID || "",
-    clientSecret: process.env.YOUTUBE_CLIENT_SECRET || "",
+    clientId: env("YOUTUBE_CLIENT_ID"),
+    clientSecret: env("YOUTUBE_CLIENT_SECRET"),
     privacyStatus: process.env.YOUTUBE_PRIVACY_STATUS || "public",
   },
   instagram: {
-    clientId: process.env.INSTAGRAM_CLIENT_ID || "",
-    clientSecret: process.env.INSTAGRAM_CLIENT_SECRET || "",
+    clientId: env("INSTAGRAM_CLIENT_ID"),
+    clientSecret: env("INSTAGRAM_CLIENT_SECRET"),
   },
   tiktok: {
-    clientKey: process.env.TIKTOK_CLIENT_KEY || "",
-    clientSecret: process.env.TIKTOK_CLIENT_SECRET || "",
+    clientKey: env("TIKTOK_CLIENT_KEY"),
+    clientSecret: env("TIKTOK_CLIENT_SECRET"),
     privacyLevel: process.env.TIKTOK_PRIVACY_LEVEL || "SELF_ONLY",
     // Must match the scopes approved for your TikTok app. video.list powers
     // the Analytics metrics; drop it if your app doesn't have that scope.
-    scopes: process.env.TIKTOK_SCOPES || "user.info.basic,video.publish,video.list",
+    scopes: env("TIKTOK_SCOPES", "user.info.basic,video.publish,video.list"),
   },
   facebook: {
-    appId: process.env.FACEBOOK_APP_ID || "",
-    appSecret: process.env.FACEBOOK_APP_SECRET || "",
+    appId: env("FACEBOOK_APP_ID"),
+    appSecret: env("FACEBOOK_APP_SECRET"),
   },
   x: {
-    clientId: process.env.X_CLIENT_ID || "",
-    clientSecret: process.env.X_CLIENT_SECRET || "",
+    clientId: env("X_CLIENT_ID"),
+    clientSecret: env("X_CLIENT_SECRET"),
   },
 };
 
