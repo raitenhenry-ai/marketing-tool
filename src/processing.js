@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import config from "./config.js";
-import db from "./db.js";
+import { q, q1, run as dbRun } from "./db.js";
 import fs from "node:fs";
 import { subtitlesEnabled, generateClipSubtitles } from "./transcribe.js";
 import { metadataEnabled, generateClipMetadata } from "./metadata.js";
@@ -132,8 +132,8 @@ export function queueLength() {
 }
 
 // Re-queue videos that were mid-processing when the server last stopped.
-export function recoverStuckVideos() {
-  const stuck = db.prepare("SELECT id FROM videos WHERE status = 'processing'").all();
+export async function recoverStuckVideos() {
+  const stuck = await q("SELECT id FROM videos WHERE status = 'processing'");
   for (const video of stuck) {
     console.log(`[processing] re-queueing video ${video.id} left in 'processing' state`);
     enqueueProcessing(video.id);
@@ -142,11 +142,11 @@ export function recoverStuckVideos() {
 }
 
 export async function processVideo(videoId) {
-  const video = db.prepare("SELECT * FROM videos WHERE id = ?").get(videoId);
+  const video = await q1("SELECT * FROM videos WHERE id = ?", [videoId]);
   if (!video) return;
 
   // A re-run (crash recovery or manual retry) starts from a clean slate.
-  db.prepare("DELETE FROM clips WHERE video_id = ?").run(videoId);
+  await dbRun("DELETE FROM clips WHERE video_id = ?", [videoId]);
 
   try {
     if (!fs.existsSync(video.path)) {
@@ -175,12 +175,6 @@ export async function processVideo(videoId) {
     }
     const totalParts = segments.length;
     const intervalMs = config.uploadIntervalHours * 3600 * 1000;
-
-    const insertClip = db.prepare(
-      `INSERT INTO clips (video_id, part_number, total_parts, filename, duration_seconds, scheduled_at, created_at,
-                          gen_title, gen_description, gen_hashtags)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    );
 
     const out = config.verticalFormat
       ? { width: Math.round((config.verticalHeight * 9) / 16 / 2) * 2, height: config.verticalHeight }
@@ -279,21 +273,24 @@ export async function processVideo(videoId) {
     // now, each following part 3 hours (uploadIntervalHours) after the last.
     const now = Date.now();
     for (const clip of clipRows) {
-      insertClip.run(
-        video.id, clip.part, clip.totalParts, clip.filename, clip.length,
-        now + (clip.part - 1) * intervalMs, now,
-        clip.meta?.title ?? null,
-        clip.meta?.description ?? null,
-        clip.meta?.hashtags?.length ? JSON.stringify(clip.meta.hashtags) : null
+      await dbRun(
+        `INSERT INTO clips (video_id, part_number, total_parts, filename, duration_seconds, scheduled_at, created_at,
+                            gen_title, gen_description, gen_hashtags)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [video.id, clip.part, clip.totalParts, clip.filename, clip.length,
+         now + (clip.part - 1) * intervalMs, now,
+         clip.meta?.title ?? null,
+         clip.meta?.description ?? null,
+         clip.meta?.hashtags?.length ? JSON.stringify(clip.meta.hashtags) : null]
       );
     }
 
-    db.prepare("UPDATE videos SET status = 'ready', duration_seconds = ?, error = NULL WHERE id = ?")
-      .run(source.duration, video.id);
+    await dbRun("UPDATE videos SET status = 'ready', duration_seconds = ?, error = NULL WHERE id = ?",
+      [source.duration, video.id]);
     console.log(`[processing] video ${video.id}: ${totalParts} clip(s) ready`);
   } catch (err) {
     console.error(`[processing] video ${video.id} failed:`, err);
-    db.prepare("UPDATE videos SET status = 'failed', error = ? WHERE id = ?")
-      .run(String(err.message || err), video.id);
+    await dbRun("UPDATE videos SET status = 'failed', error = ? WHERE id = ?",
+      [String(err.message || err), video.id]);
   }
 }

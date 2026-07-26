@@ -140,10 +140,27 @@ TikTok `video.list`). Accounts connected before this feature must be
 **reconnected once** from the Accounts page to grant them; YouTube accounts
 are unaffected.
 
+## Database: SQLite or Neon Postgres
+
+By default everything is stored in SQLite (`data/app.db`). Set `DATABASE_URL`
+to any Postgres connection string — e.g. a free [Neon](https://neon.tech)
+database — and the app uses Postgres instead:
+
+1. Create a project at neon.tech and copy the connection string
+   (`postgresql://...neon.tech/neondb?sslmode=require`).
+2. Set it as `DATABASE_URL` in your host's environment variables and redeploy.
+   Tables are created automatically on first boot.
+
+With Neon, accounts/queue/history survive redeploys **without** a disk volume.
+Note: video files (originals + rendered clips) still live on disk, so keep the
+volume mounted at `/app/data` — without it, clips that haven't published yet
+are lost on redeploy even though their queue entries remain.
+
 ## How scheduling works
 
 - When processing finishes, each clip gets a `scheduled_at` timestamp: part 1 = now, part N = now + (N−1) × 3h.
 - A background worker runs every minute and publishes any due clip to each platform that has at least one connected account (up to 3 attempts per upload, 10 minutes apart).
+- **Downtime-safe spacing**: if the server was down and several parts became overdue, they are automatically re-spaced (first one publishes immediately, each next one `UPLOAD_INTERVAL_HOURS` later) instead of all posting at once.
 - On each platform, a video publishes to its **assigned account**: the first time a video needs to publish, the account with the fewest assigned videos is picked, and every part of that video sticks with it. Consecutive videos therefore rotate across your connected accounts.
 - Everything is stored in SQLite (`data/app.db`), so the queue survives restarts. Keep the server running so scheduled uploads go out.
 

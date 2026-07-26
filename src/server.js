@@ -2,7 +2,7 @@ import express from "express";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import config from "./config.js";
-import db from "./db.js";
+import { q1, closeDb, dbKind } from "./db.js";
 import authRoutes from "./routes/auth.js";
 import apiRoutes from "./routes/api.js";
 import { registerAuthRoutes, authMiddleware, authEnabled } from "./auth.js";
@@ -35,13 +35,19 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Public: health probe and clip files (Instagram fetches clips by URL).
-app.get("/healthz", (req, res) => {
-  res.json({
-    ok: true,
-    uptimeSeconds: Math.round(process.uptime()),
-    processingQueue: queueLength(),
-    connectedAccounts: db.prepare("SELECT COUNT(*) AS n FROM accounts").get().n,
-  });
+app.get("/healthz", async (req, res) => {
+  try {
+    const accounts = Number((await q1("SELECT COUNT(*) AS n FROM accounts")).n);
+    res.json({
+      ok: true,
+      database: dbKind,
+      uptimeSeconds: Math.round(process.uptime()),
+      processingQueue: queueLength(),
+      connectedAccounts: accounts,
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err.message || err) });
+  }
 });
 app.use("/clips", express.static(config.clipsDir));
 
@@ -52,7 +58,7 @@ app.use(express.static(path.join(config.rootDir, "public")));
 app.use("/auth", authRoutes);
 app.use("/api", apiRoutes);
 
-const server = app.listen(config.port, () => {
+const server = app.listen(config.port, async () => {
   console.log(`Short-form manager running at ${config.baseUrl} (port ${config.port})`);
   if (!authEnabled()) {
     console.warn(
@@ -61,7 +67,10 @@ const server = app.listen(config.port, () => {
     );
   }
   checkFfmpeg();
-  const recovered = recoverStuckVideos();
+  const recovered = await recoverStuckVideos().catch((e) => {
+    console.error("[startup] recovery failed:", e);
+    return 0;
+  });
   if (recovered) console.log(`[startup] recovered ${recovered} interrupted video(s)`);
   startScheduler();
   startCleanup();
@@ -72,8 +81,8 @@ const server = app.listen(config.port, () => {
 // re-queued by recoverStuckVideos() on the next boot.
 function shutdown(signal) {
   console.log(`[shutdown] received ${signal}, closing`);
-  server.close(() => {
-    db.close();
+  server.close(async () => {
+    await Promise.resolve(closeDb()).catch(() => {});
     process.exit(0);
   });
   setTimeout(() => process.exit(0), 8000).unref();

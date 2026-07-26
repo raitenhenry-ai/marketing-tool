@@ -45,6 +45,9 @@ const config = {
   generateMetadata: (process.env.GENERATE_METADATA || "true").toLowerCase() !== "false",
   openaiChatModel: process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini",
 
+  // Postgres/Neon connection string; empty = local SQLite in data/app.db.
+  databaseUrl: process.env.DATABASE_URL || "",
+
   dataDir: path.join(rootDir, "data"),
   uploadsDir: path.join(rootDir, "data", "uploads"),
   clipsDir: path.join(rootDir, "data", "clips"),

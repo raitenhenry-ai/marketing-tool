@@ -1,50 +1,168 @@
-import Database from "better-sqlite3";
 import config from "./config.js";
 
-const db = new Database(config.dbPath);
-db.pragma("journal_mode = WAL");
-db.pragma("foreign_keys = ON");
+// Async database adapter with two drivers:
+//   - SQLite (default): zero-config, stored in data/app.db.
+//   - Postgres (Neon or any other): set DATABASE_URL.
+// All queries use ?-placeholders; they're translated to $n for Postgres.
+//
+//   q(sql, params)   -> all rows
+//   q1(sql, params)  -> first row or undefined
+//   run(sql, params) -> { changes } (use q1 with RETURNING for insert ids)
 
-const version = db.pragma("user_version", { simple: true });
+export let dbKind = "sqlite";
 
-// v0 -> v1: single account per platform -> up to N accounts per platform,
-// with each video pinned to one account per platform.
-if (version < 1) {
-  const hasOldAccounts =
-    db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'accounts'").get() &&
-    !db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'video_accounts'").get();
+let _q, _q1, _run, _close;
 
-  if (hasOldAccounts) {
-    db.exec(`
-      ALTER TABLE accounts RENAME TO accounts_v0;
-      ALTER TABLE uploads RENAME TO uploads_v0;
-    `);
-  }
+function toPg(sql) {
+  let i = 0;
+  return sql.replace(/\?/g, () => `$${++i}`);
+}
 
-  db.exec(`
+const PG_SCHEMA = `
 CREATE TABLE IF NOT EXISTS accounts (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  platform TEXT NOT NULL,                 -- youtube | instagram | tiktok
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  platform TEXT NOT NULL,
   access_token TEXT NOT NULL,
   refresh_token TEXT,
-  expires_at INTEGER,                     -- epoch ms when access_token expires
-  external_id TEXT,                       -- channel/user id on the platform
+  expires_at BIGINT,
+  external_id TEXT,
+  display_name TEXT,
+  connected_at BIGINT NOT NULL,
+  UNIQUE (platform, external_id)
+);
+CREATE TABLE IF NOT EXISTS videos (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  title TEXT NOT NULL,
+  original_filename TEXT NOT NULL,
+  path TEXT NOT NULL,
+  duration_seconds DOUBLE PRECISION,
+  status TEXT NOT NULL DEFAULT 'processing',
+  error TEXT,
+  cuts_json TEXT,
+  created_at BIGINT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS clips (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  video_id BIGINT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+  part_number INTEGER NOT NULL,
+  total_parts INTEGER NOT NULL,
+  filename TEXT NOT NULL,
+  duration_seconds DOUBLE PRECISION,
+  scheduled_at BIGINT NOT NULL,
+  created_at BIGINT NOT NULL,
+  gen_title TEXT,
+  gen_description TEXT,
+  gen_hashtags TEXT
+);
+CREATE TABLE IF NOT EXISTS video_accounts (
+  video_id BIGINT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+  platform TEXT NOT NULL,
+  account_id BIGINT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  assigned_at BIGINT NOT NULL,
+  UNIQUE (video_id, platform)
+);
+CREATE TABLE IF NOT EXISTS uploads (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  clip_id BIGINT NOT NULL REFERENCES clips(id) ON DELETE CASCADE,
+  account_id BIGINT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  platform TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  attempts INTEGER NOT NULL DEFAULT 0,
+  next_attempt_at BIGINT,
+  platform_video_id TEXT,
+  error TEXT,
+  uploaded_at BIGINT,
+  metrics_json TEXT,
+  metrics_at BIGINT,
+  public_post_id TEXT,
+  UNIQUE (clip_id, account_id)
+);
+`;
+
+if (config.databaseUrl) {
+  dbKind = "postgres";
+  const { default: pg } = await import("pg");
+  // BIGINT (ids, epoch-ms timestamps) comes back as strings by default;
+  // our values all fit safely in JS numbers.
+  pg.types.setTypeParser(20, (v) => Number(v));
+  const needsSsl = !/localhost|127\.0\.0\.1/.test(config.databaseUrl);
+  const pool = new pg.Pool({
+    connectionString: config.databaseUrl,
+    ssl: needsSsl ? { rejectUnauthorized: false } : undefined,
+    max: 5,
+  });
+  pool.on("error", (err) => console.error("[db] postgres pool error:", err.message));
+
+  _q = async (sql, params = []) => (await pool.query(toPg(sql), params)).rows;
+  _q1 = async (sql, params = []) => (await pool.query(toPg(sql), params)).rows[0];
+  _run = async (sql, params = []) => {
+    const result = await pool.query(toPg(sql), params);
+    return { changes: result.rowCount };
+  };
+  _close = () => pool.end();
+
+  await pool.query(PG_SCHEMA);
+  console.log("[db] connected to Postgres");
+} else {
+  const { default: Database } = await import("better-sqlite3");
+  const sdb = new Database(config.dbPath);
+  sdb.pragma("journal_mode = WAL");
+  sdb.pragma("foreign_keys = ON");
+  initSqlite(sdb);
+
+  _q = async (sql, params = []) => sdb.prepare(sql).all(...params);
+  _q1 = async (sql, params = []) => sdb.prepare(sql).get(...params);
+  _run = async (sql, params = []) => {
+    const info = sdb.prepare(sql).run(...params);
+    return { changes: info.changes };
+  };
+  _close = () => sdb.close();
+}
+
+export const q = (sql, params) => _q(sql, params);
+export const q1 = (sql, params) => _q1(sql, params);
+export const run = (sql, params) => _run(sql, params);
+export const closeDb = () => _close();
+
+/* ---------- SQLite schema + legacy migrations (pragma user_version) ---------- */
+
+function initSqlite(db) {
+  const version = db.pragma("user_version", { simple: true });
+
+  if (version < 1) {
+    const hasOldAccounts =
+      db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'accounts'").get() &&
+      !db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'video_accounts'").get();
+
+    if (hasOldAccounts) {
+      db.exec(`
+        ALTER TABLE accounts RENAME TO accounts_v0;
+        ALTER TABLE uploads RENAME TO uploads_v0;
+      `);
+    }
+
+    db.exec(`
+CREATE TABLE IF NOT EXISTS accounts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  platform TEXT NOT NULL,
+  access_token TEXT NOT NULL,
+  refresh_token TEXT,
+  expires_at INTEGER,
+  external_id TEXT,
   display_name TEXT,
   connected_at INTEGER NOT NULL,
   UNIQUE (platform, external_id)
 );
-
 CREATE TABLE IF NOT EXISTS videos (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   title TEXT NOT NULL,
   original_filename TEXT NOT NULL,
   path TEXT NOT NULL,
   duration_seconds REAL,
-  status TEXT NOT NULL DEFAULT 'processing',  -- processing | ready | failed
+  status TEXT NOT NULL DEFAULT 'processing',
   error TEXT,
   created_at INTEGER NOT NULL
 );
-
 CREATE TABLE IF NOT EXISTS clips (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   video_id INTEGER NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
@@ -52,12 +170,9 @@ CREATE TABLE IF NOT EXISTS clips (
   total_parts INTEGER NOT NULL,
   filename TEXT NOT NULL,
   duration_seconds REAL,
-  scheduled_at INTEGER NOT NULL,          -- epoch ms when this clip should publish
+  scheduled_at INTEGER NOT NULL,
   created_at INTEGER NOT NULL
 );
-
--- Which account a video publishes to on each platform. All clips of a video
--- go to the same account (one per platform).
 CREATE TABLE IF NOT EXISTS video_accounts (
   video_id INTEGER NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
   platform TEXT NOT NULL,
@@ -65,13 +180,12 @@ CREATE TABLE IF NOT EXISTS video_accounts (
   assigned_at INTEGER NOT NULL,
   UNIQUE (video_id, platform)
 );
-
 CREATE TABLE IF NOT EXISTS uploads (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   clip_id INTEGER NOT NULL REFERENCES clips(id) ON DELETE CASCADE,
   account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
   platform TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'pending', -- pending | uploading | done | failed
+  status TEXT NOT NULL DEFAULT 'pending',
   attempts INTEGER NOT NULL DEFAULT 0,
   next_attempt_at INTEGER,
   platform_video_id TEXT,
@@ -81,66 +195,55 @@ CREATE TABLE IF NOT EXISTS uploads (
 );
 `);
 
-  if (hasOldAccounts) {
-    db.exec(`
-      INSERT INTO accounts (id, platform, access_token, refresh_token, expires_at, external_id, display_name, connected_at)
-        SELECT id, platform, access_token, refresh_token, expires_at, external_id, display_name, connected_at
-        FROM accounts_v0;
-
-      -- Old uploads were keyed by platform (one account per platform); pin
-      -- those videos to that account so history stays consistent.
-      INSERT INTO uploads (clip_id, account_id, platform, status, attempts, next_attempt_at, platform_video_id, error, uploaded_at)
-        SELECT u.clip_id, a.id, u.platform, u.status, u.attempts, u.next_attempt_at, u.platform_video_id, u.error, u.uploaded_at
-        FROM uploads_v0 u JOIN accounts_v0 a ON a.platform = u.platform;
-
-      INSERT OR IGNORE INTO video_accounts (video_id, platform, account_id, assigned_at)
-        SELECT DISTINCT c.video_id, u.platform, a.id, COALESCE(u.uploaded_at, c.created_at)
-        FROM uploads_v0 u
-        JOIN clips c ON c.id = u.clip_id
-        JOIN accounts_v0 a ON a.platform = u.platform;
-
-      DROP TABLE uploads_v0;
-      DROP TABLE accounts_v0;
-    `);
-  }
-
-  db.pragma("user_version = 1");
-}
-
-// v1 -> v2: optional user-defined cut times per video.
-if (version < 2) {
-  const cols = db.prepare("PRAGMA table_info(videos)").all();
-  if (!cols.some((c) => c.name === "cuts_json")) {
-    db.exec("ALTER TABLE videos ADD COLUMN cuts_json TEXT");
-  }
-  db.pragma("user_version = 2");
-}
-
-// v2 -> v3: per-clip AI-generated publishing metadata.
-if (version < 3) {
-  const cols = db.prepare("PRAGMA table_info(clips)").all();
-  for (const col of ["gen_title", "gen_description", "gen_hashtags"]) {
-    if (!cols.some((c) => c.name === col)) {
-      db.exec(`ALTER TABLE clips ADD COLUMN ${col} TEXT`);
+    if (hasOldAccounts) {
+      db.exec(`
+        INSERT INTO accounts (id, platform, access_token, refresh_token, expires_at, external_id, display_name, connected_at)
+          SELECT id, platform, access_token, refresh_token, expires_at, external_id, display_name, connected_at
+          FROM accounts_v0;
+        INSERT INTO uploads (clip_id, account_id, platform, status, attempts, next_attempt_at, platform_video_id, error, uploaded_at)
+          SELECT u.clip_id, a.id, u.platform, u.status, u.attempts, u.next_attempt_at, u.platform_video_id, u.error, u.uploaded_at
+          FROM uploads_v0 u JOIN accounts_v0 a ON a.platform = u.platform;
+        INSERT OR IGNORE INTO video_accounts (video_id, platform, account_id, assigned_at)
+          SELECT DISTINCT c.video_id, u.platform, a.id, COALESCE(u.uploaded_at, c.created_at)
+          FROM uploads_v0 u
+          JOIN clips c ON c.id = u.clip_id
+          JOIN accounts_v0 a ON a.platform = u.platform;
+        DROP TABLE uploads_v0;
+        DROP TABLE accounts_v0;
+      `);
     }
+    db.pragma("user_version = 1");
   }
-  db.pragma("user_version = 3");
-}
 
-// v3 -> v4: per-upload platform metrics (views/likes/...), plus the public
-// post id for TikTok (whose publish flow returns an internal id first).
-if (version < 4) {
-  const cols = db.prepare("PRAGMA table_info(uploads)").all();
-  for (const [col, type] of [
-    ["metrics_json", "TEXT"],
-    ["metrics_at", "INTEGER"],
-    ["public_post_id", "TEXT"],
-  ]) {
-    if (!cols.some((c) => c.name === col)) {
-      db.exec(`ALTER TABLE uploads ADD COLUMN ${col} ${type}`);
+  if (version < 2) {
+    const cols = db.prepare("PRAGMA table_info(videos)").all();
+    if (!cols.some((c) => c.name === "cuts_json")) {
+      db.exec("ALTER TABLE videos ADD COLUMN cuts_json TEXT");
     }
+    db.pragma("user_version = 2");
   }
-  db.pragma("user_version = 4");
-}
 
-export default db;
+  if (version < 3) {
+    const cols = db.prepare("PRAGMA table_info(clips)").all();
+    for (const col of ["gen_title", "gen_description", "gen_hashtags"]) {
+      if (!cols.some((c) => c.name === col)) {
+        db.exec(`ALTER TABLE clips ADD COLUMN ${col} TEXT`);
+      }
+    }
+    db.pragma("user_version = 3");
+  }
+
+  if (version < 4) {
+    const cols = db.prepare("PRAGMA table_info(uploads)").all();
+    for (const [col, type] of [
+      ["metrics_json", "TEXT"],
+      ["metrics_at", "INTEGER"],
+      ["public_post_id", "TEXT"],
+    ]) {
+      if (!cols.some((c) => c.name === col)) {
+        db.exec(`ALTER TABLE uploads ADD COLUMN ${col} ${type}`);
+      }
+    }
+    db.pragma("user_version = 4");
+  }
+}

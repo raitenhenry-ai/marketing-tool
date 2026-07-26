@@ -79,6 +79,7 @@ async function load() {
 
     kvSection("Server", [
       ["Base URL", copyable(s.server.baseUrl)],
+      ["Database", `<code>${esc(s.server.database || "SQLite")}</code>`],
       ["Dashboard login", onOff(s.server.authEnabled, "Password protected", "OPEN — set ADMIN_PASSWORD before going public")],
       ["Uptime", fmtDuration(s.server.uptimeSeconds)],
       ["Encode queue", s.server.queueDepth ? `${s.server.queueDepth} video(s) waiting` : "idle"],

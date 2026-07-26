@@ -1,4 +1,4 @@
-import db from "./db.js";
+import { q, q1, run as dbRun } from "./db.js";
 import { freshAccount, platforms } from "./scheduler.js";
 
 const REFRESH_INTERVAL_MS = 6 * 3600 * 1000;
@@ -6,8 +6,8 @@ const REFRESH_INTERVAL_MS = 6 * 3600 * 1000;
 let running = false;
 let lastRun = null;
 
-const saveMetrics = () =>
-  db.prepare("UPDATE uploads SET metrics_json = ?, metrics_at = ? WHERE id = ?");
+const saveMetric = (json, at, id) =>
+  dbRun("UPDATE uploads SET metrics_json = ?, metrics_at = ? WHERE id = ?", [json, at, id]);
 
 // Pulls views/likes/comments/... for every published upload, per account.
 // Failures are per-account (a broken token on one account never blocks the
@@ -17,11 +17,11 @@ export async function refreshMetrics() {
   running = true;
   const startedAt = Date.now();
   try {
-    const uploads = db.prepare(
+    const uploads = await q(
       `SELECT uploads.*, accounts.platform AS platform_name
        FROM uploads JOIN accounts ON accounts.id = uploads.account_id
        WHERE uploads.status = 'done' AND uploads.platform_video_id IS NOT NULL`
-    ).all();
+    );
 
     const byAccount = new Map();
     for (const u of uploads) {
@@ -54,7 +54,6 @@ export async function refreshMetrics() {
 
 async function refreshForAccount(account, rows) {
   const now = Date.now();
-  const save = saveMetrics();
   const platform = platforms[account.platform];
   if (!platform?.fetchStats) return 0;
   let updated = 0;
@@ -62,11 +61,13 @@ async function refreshForAccount(account, rows) {
   if (account.platform === "tiktok") {
     // TikTok's publish flow returns an internal id; resolve the public post
     // id first for any upload that doesn't have one yet.
-    const setPostId = db.prepare("UPDATE uploads SET public_post_id = ? WHERE id = ?");
     for (const row of rows) {
       if (!row.public_post_id) {
         const postId = await platform.resolvePostId(account, row.platform_video_id);
-        if (postId) { setPostId.run(postId, row.id); row.public_post_id = postId; }
+        if (postId) {
+          await dbRun("UPDATE uploads SET public_post_id = ? WHERE id = ?", [postId, row.id]);
+          row.public_post_id = postId;
+        }
       }
     }
     const resolvable = rows.filter((r) => r.public_post_id);
@@ -74,7 +75,7 @@ async function refreshForAccount(account, rows) {
       const stats = await platform.fetchStats(account, resolvable.map((r) => r.public_post_id));
       for (const row of resolvable) {
         const s = stats[row.public_post_id];
-        if (s) { save.run(JSON.stringify(s), now, row.id); updated++; }
+        if (s) { await saveMetric(JSON.stringify(s), now, row.id); updated++; }
       }
     }
     return updated;
@@ -83,7 +84,7 @@ async function refreshForAccount(account, rows) {
   const stats = await platform.fetchStats(account, rows.map((r) => r.platform_video_id));
   for (const row of rows) {
     const s = stats[row.platform_video_id];
-    if (s) { save.run(JSON.stringify(s), now, row.id); updated++; }
+    if (s) { await saveMetric(JSON.stringify(s), now, row.id); updated++; }
   }
   return updated;
 }

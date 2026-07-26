@@ -3,7 +3,7 @@ import multer from "multer";
 import path from "node:path";
 import crypto from "node:crypto";
 import config from "../config.js";
-import db from "../db.js";
+import { q, q1, run as dbRun, dbKind } from "../db.js";
 import fs from "node:fs";
 import { enqueueProcessing, queueLength } from "../processing.js";
 import { subtitlesEnabled } from "../transcribe.js";
@@ -32,19 +32,28 @@ const upload = multer({
   },
 });
 
-router.get("/accounts", (req, res) => {
+// Wraps async handlers so rejections become 500s instead of hung requests.
+const wrap = (fn) => (req, res) =>
+  fn(req, res).catch((err) => {
+    console.error(`[api] ${req.method} ${req.path} failed:`, err);
+    if (!res.headersSent) res.status(500).json({ error: String(err.message || err) });
+  });
+
+router.get("/accounts", wrap(async (req, res) => {
   const byPlatform = Object.fromEntries(PLATFORM_KEYS.map((k) => [k, []]));
-  for (const a of db.prepare(
+  const rows = await q(
     `SELECT accounts.id, accounts.platform, accounts.display_name, accounts.connected_at,
             COUNT(video_accounts.video_id) AS videos_assigned
      FROM accounts LEFT JOIN video_accounts ON video_accounts.account_id = accounts.id
-     GROUP BY accounts.id ORDER BY accounts.id`
-  ).all()) {
+     GROUP BY accounts.id, accounts.platform, accounts.display_name, accounts.connected_at
+     ORDER BY accounts.id`
+  );
+  for (const a of rows) {
     byPlatform[a.platform]?.push({
       id: a.id,
       displayName: a.display_name,
-      connectedAt: a.connected_at,
-      videosAssigned: a.videos_assigned,
+      connectedAt: Number(a.connected_at),
+      videosAssigned: Number(a.videos_assigned),
     });
   }
   res.json({
@@ -59,9 +68,9 @@ router.get("/accounts", (req, res) => {
       subtitlesEnabled: subtitlesEnabled(),
     },
   });
-});
+}));
 
-router.post("/videos", upload.single("video"), (req, res) => {
+router.post("/videos", upload.single("video"), wrap(async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No video file received" });
   const title = (req.body.title || "").trim() || path.parse(req.file.originalname || "video").name;
 
@@ -73,102 +82,132 @@ router.post("/videos", upload.single("video"), (req, res) => {
     return res.status(400).json({ error: String(err.message || err) });
   }
 
-  const result = db.prepare(
+  const row = await q1(
     `INSERT INTO videos (title, original_filename, path, status, cuts_json, created_at)
-     VALUES (?, ?, ?, 'processing', ?, ?)`
-  ).run(
-    title,
-    req.file.originalname || req.file.filename,
-    req.file.path,
-    cuts ? JSON.stringify(cuts) : null,
-    Date.now()
+     VALUES (?, ?, ?, 'processing', ?, ?) RETURNING id`,
+    [title, req.file.originalname || req.file.filename, req.file.path,
+     cuts ? JSON.stringify(cuts) : null, Date.now()]
   );
 
   // Queued (one encode at a time) - progress is visible via GET /api/videos.
-  enqueueProcessing(result.lastInsertRowid);
+  enqueueProcessing(row.id);
+  res.json({ id: row.id, status: "processing" });
+}));
 
-  res.json({ id: result.lastInsertRowid, status: "processing" });
-});
-
-router.post("/videos/:id/reprocess", (req, res) => {
-  const video = db.prepare("SELECT * FROM videos WHERE id = ?").get(req.params.id);
+router.post("/videos/:id/reprocess", wrap(async (req, res) => {
+  const video = await q1("SELECT * FROM videos WHERE id = ?", [req.params.id]);
   if (!video) return res.status(404).json({ error: "Video not found" });
   if (video.status !== "failed") {
     return res.status(400).json({ error: "Only failed videos can be reprocessed" });
   }
-  db.prepare("UPDATE videos SET status = 'processing', error = NULL WHERE id = ?").run(video.id);
+  await dbRun("UPDATE videos SET status = 'processing', error = NULL WHERE id = ?", [video.id]);
   enqueueProcessing(video.id);
   res.json({ ok: true });
-});
+}));
 
-router.get("/videos", (req, res) => {
-  const videos = db.prepare("SELECT * FROM videos ORDER BY created_at DESC").all();
-  const clipsStmt = db.prepare(
-    `SELECT id, part_number, total_parts, filename, duration_seconds, scheduled_at,
-            gen_title, gen_hashtags
-     FROM clips WHERE video_id = ? ORDER BY part_number`
-  );
-  const uploadsStmt = db.prepare(
-    `SELECT uploads.platform, uploads.status, uploads.attempts, uploads.error,
-            uploads.platform_video_id, uploads.uploaded_at, accounts.display_name AS account_name
-     FROM uploads LEFT JOIN accounts ON accounts.id = uploads.account_id
-     WHERE uploads.clip_id = ?`
-  );
-  const assignmentsStmt = db.prepare(
-    `SELECT video_accounts.platform, accounts.display_name AS account_name
-     FROM video_accounts JOIN accounts ON accounts.id = video_accounts.account_id
-     WHERE video_accounts.video_id = ?`
-  );
-
-  res.json(
-    videos.map((v) => ({
+router.get("/videos", wrap(async (req, res) => {
+  const videos = await q("SELECT * FROM videos ORDER BY created_at DESC");
+  const result = [];
+  for (const v of videos) {
+    const clips = await q(
+      `SELECT id, part_number, total_parts, filename, duration_seconds, scheduled_at,
+              gen_title, gen_hashtags
+       FROM clips WHERE video_id = ? ORDER BY part_number`,
+      [v.id]
+    );
+    const accounts = await q(
+      `SELECT video_accounts.platform, accounts.display_name AS account_name
+       FROM video_accounts JOIN accounts ON accounts.id = video_accounts.account_id
+       WHERE video_accounts.video_id = ?`,
+      [v.id]
+    );
+    const clipsOut = [];
+    for (const c of clips) {
+      const uploads = await q(
+        `SELECT uploads.platform, uploads.status, uploads.attempts, uploads.error,
+                uploads.platform_video_id, uploads.uploaded_at, accounts.display_name AS account_name
+         FROM uploads LEFT JOIN accounts ON accounts.id = uploads.account_id
+         WHERE uploads.clip_id = ?`,
+        [c.id]
+      );
+      clipsOut.push({
+        id: c.id,
+        part: c.part_number,
+        totalParts: c.total_parts,
+        durationSeconds: c.duration_seconds,
+        scheduledAt: Number(c.scheduled_at),
+        genTitle: c.gen_title,
+        genHashtags: JSON.parse(c.gen_hashtags || "[]"),
+        url: `/clips/${encodeURIComponent(c.filename)}`,
+        uploads,
+      });
+    }
+    result.push({
       id: v.id,
       title: v.title,
       status: v.status,
       error: v.error,
       durationSeconds: v.duration_seconds,
-      createdAt: v.created_at,
-      accounts: assignmentsStmt.all(v.id),
-      clips: clipsStmt.all(v.id).map((c) => ({
-        id: c.id,
-        part: c.part_number,
-        totalParts: c.total_parts,
-        durationSeconds: c.duration_seconds,
-        scheduledAt: c.scheduled_at,
-        genTitle: c.gen_title,
-        genHashtags: JSON.parse(c.gen_hashtags || "[]"),
-        url: `/clips/${encodeURIComponent(c.filename)}`,
-        uploads: uploadsStmt.all(c.id),
-      })),
-    }))
-  );
-});
+      createdAt: Number(v.created_at),
+      accounts,
+      clips: clipsOut,
+    });
+  }
+  res.json(result);
+}));
 
-router.delete("/videos/:id", (req, res) => {
-  const video = db.prepare("SELECT * FROM videos WHERE id = ?").get(req.params.id);
+router.delete("/videos/:id", wrap(async (req, res) => {
+  const video = await q1("SELECT * FROM videos WHERE id = ?", [req.params.id]);
   if (!video) return res.status(404).json({ error: "Video not found" });
-  deleteVideoFiles(video);
-  db.prepare("DELETE FROM videos WHERE id = ?").run(video.id);
+  await deleteVideoFiles(video);
+  await dbRun("DELETE FROM videos WHERE id = ?", [video.id]);
   res.json({ ok: true });
-});
+}));
 
-router.get("/videos/:id", (req, res) => {
-  const v = db.prepare("SELECT * FROM videos WHERE id = ?").get(req.params.id);
+router.get("/videos/:id", wrap(async (req, res) => {
+  const v = await q1("SELECT * FROM videos WHERE id = ?", [req.params.id]);
   if (!v) return res.status(404).json({ error: "Video not found" });
 
-  const clips = db.prepare(
-    "SELECT * FROM clips WHERE video_id = ? ORDER BY part_number"
-  ).all(v.id);
-  const uploadsStmt = db.prepare(
-    `SELECT uploads.*, accounts.display_name AS account_name
-     FROM uploads LEFT JOIN accounts ON accounts.id = uploads.account_id
-     WHERE uploads.clip_id = ?`
-  );
-  const assignments = db.prepare(
+  const clips = await q("SELECT * FROM clips WHERE video_id = ? ORDER BY part_number", [v.id]);
+  const assignments = await q(
     `SELECT video_accounts.platform, accounts.display_name AS account_name, accounts.id AS account_id
      FROM video_accounts JOIN accounts ON accounts.id = video_accounts.account_id
-     WHERE video_accounts.video_id = ?`
-  ).all(v.id);
+     WHERE video_accounts.video_id = ?`,
+    [v.id]
+  );
+
+  const clipsOut = [];
+  for (const c of clips) {
+    const uploads = await q(
+      `SELECT uploads.*, accounts.display_name AS account_name
+       FROM uploads LEFT JOIN accounts ON accounts.id = uploads.account_id
+       WHERE uploads.clip_id = ?`,
+      [c.id]
+    );
+    clipsOut.push({
+      id: c.id,
+      part: c.part_number,
+      totalParts: c.total_parts,
+      durationSeconds: c.duration_seconds,
+      scheduledAt: Number(c.scheduled_at),
+      genTitle: c.gen_title,
+      genDescription: c.gen_description,
+      genHashtags: JSON.parse(c.gen_hashtags || "[]"),
+      url: `/clips/${encodeURIComponent(c.filename)}`,
+      uploads: uploads.map((u) => ({
+        platform: u.platform,
+        accountName: u.account_name,
+        status: u.status,
+        attempts: u.attempts,
+        error: u.error,
+        platformVideoId: u.platform_video_id,
+        uploadedAt: u.uploaded_at ? Number(u.uploaded_at) : null,
+        nextAttemptAt: u.next_attempt_at ? Number(u.next_attempt_at) : null,
+        metrics: u.metrics_json ? JSON.parse(u.metrics_json) : null,
+        metricsAt: u.metrics_at ? Number(u.metrics_at) : null,
+      })),
+    });
+  }
 
   res.json({
     id: v.id,
@@ -177,48 +216,27 @@ router.get("/videos/:id", (req, res) => {
     status: v.status,
     error: v.error,
     durationSeconds: v.duration_seconds,
-    createdAt: v.created_at,
+    createdAt: Number(v.created_at),
     cuts: v.cuts_json ? JSON.parse(v.cuts_json) : null,
     accounts: assignments,
-    clips: clips.map((c) => ({
-      id: c.id,
-      part: c.part_number,
-      totalParts: c.total_parts,
-      durationSeconds: c.duration_seconds,
-      scheduledAt: c.scheduled_at,
-      genTitle: c.gen_title,
-      genDescription: c.gen_description,
-      genHashtags: JSON.parse(c.gen_hashtags || "[]"),
-      url: `/clips/${encodeURIComponent(c.filename)}`,
-      uploads: uploadsStmt.all(c.id).map((u) => ({
-        platform: u.platform,
-        accountName: u.account_name,
-        status: u.status,
-        attempts: u.attempts,
-        error: u.error,
-        platformVideoId: u.platform_video_id,
-        uploadedAt: u.uploaded_at,
-        nextAttemptAt: u.next_attempt_at,
-        metrics: u.metrics_json ? JSON.parse(u.metrics_json) : null,
-        metricsAt: u.metrics_at,
-      })),
-    })),
+    clips: clipsOut,
   });
-});
+}));
 
-router.get("/stats", (req, res) => {
+router.get("/stats", wrap(async (req, res) => {
   const now = Date.now();
-  const count = (sql, ...args) => db.prepare(sql).get(...args).n;
+  const count = async (sql, params = []) => Number((await q1(sql, params)).n);
 
-  const nextPublishes = db.prepare(
+  const nextPublishes = await q(
     `SELECT clips.id, clips.part_number, clips.total_parts, clips.scheduled_at,
             clips.gen_title, videos.id AS video_id, videos.title
      FROM clips JOIN videos ON videos.id = clips.video_id
      WHERE videos.status = 'ready' AND clips.scheduled_at > ?
-     ORDER BY clips.scheduled_at ASC LIMIT 6`
-  ).all(now);
+     ORDER BY clips.scheduled_at ASC LIMIT 6`,
+    [now]
+  );
 
-  const recentUploads = db.prepare(
+  const recentUploads = await q(
     `SELECT uploads.platform, uploads.status, uploads.error, uploads.uploaded_at,
             uploads.platform_video_id, accounts.display_name AS account_name,
             clips.part_number, clips.total_parts, videos.id AS video_id, videos.title
@@ -227,56 +245,70 @@ router.get("/stats", (req, res) => {
      JOIN clips ON clips.id = uploads.clip_id
      JOIN videos ON videos.id = clips.video_id
      ORDER BY COALESCE(uploads.uploaded_at, 0) DESC, uploads.id DESC LIMIT 8`
-  ).all();
+  );
 
-  const totalViews = db.prepare(
+  const metricRows = await q(
     "SELECT metrics_json FROM uploads WHERE status = 'done' AND metrics_json IS NOT NULL"
-  ).all().reduce((sum, r) => sum + Number(JSON.parse(r.metrics_json).views || 0), 0);
+  );
+  const totalViews = metricRows.reduce(
+    (sum, r) => sum + Number(JSON.parse(r.metrics_json).views || 0), 0
+  );
+
+  const accountsByPlatform = Object.fromEntries(
+    (await q("SELECT platform, COUNT(*) AS n FROM accounts GROUP BY platform"))
+      .map((r) => [r.platform, Number(r.n)])
+  );
 
   res.json({
     totals: {
       totalViews,
-      videos: count("SELECT COUNT(*) AS n FROM videos"),
-      clips: count("SELECT COUNT(*) AS n FROM clips"),
-      published: count("SELECT COUNT(*) AS n FROM uploads WHERE status = 'done'"),
-      failedUploads: count(
+      videos: await count("SELECT COUNT(*) AS n FROM videos"),
+      clips: await count("SELECT COUNT(*) AS n FROM clips"),
+      published: await count("SELECT COUNT(*) AS n FROM uploads WHERE status = 'done'"),
+      failedUploads: await count(
         "SELECT COUNT(*) AS n FROM uploads WHERE status = 'failed' AND next_attempt_at IS NULL"
       ),
-      scheduled: count(
+      scheduled: await count(
         `SELECT COUNT(*) AS n FROM clips JOIN videos ON videos.id = clips.video_id
-         WHERE videos.status = 'ready' AND clips.scheduled_at > ?`, now
+         WHERE videos.status = 'ready' AND clips.scheduled_at > ?`, [now]
       ),
-      accounts: count("SELECT COUNT(*) AS n FROM accounts"),
-      processingVideos: count("SELECT COUNT(*) AS n FROM videos WHERE status = 'processing'"),
-      failedVideos: count("SELECT COUNT(*) AS n FROM videos WHERE status = 'failed'"),
+      accounts: await count("SELECT COUNT(*) AS n FROM accounts"),
+      processingVideos: await count("SELECT COUNT(*) AS n FROM videos WHERE status = 'processing'"),
+      failedVideos: await count("SELECT COUNT(*) AS n FROM videos WHERE status = 'failed'"),
     },
     queueDepth: queueLength(),
-    accountsByPlatform: Object.fromEntries(
-      db.prepare("SELECT platform, COUNT(*) AS n FROM accounts GROUP BY platform").all()
-        .map((r) => [r.platform, r.n])
-    ),
-    nextPublishes,
-    recentUploads,
+    accountsByPlatform,
+    nextPublishes: nextPublishes.map((c) => ({ ...c, scheduled_at: Number(c.scheduled_at) })),
+    recentUploads: recentUploads.map((u) => ({
+      ...u,
+      uploaded_at: u.uploaded_at ? Number(u.uploaded_at) : null,
+    })),
   });
-});
+}));
 
-router.get("/schedule", (req, res) => {
-  const upcoming = db.prepare(
+router.get("/schedule", wrap(async (req, res) => {
+  const clips = await q(
     `SELECT clips.id, clips.part_number, clips.total_parts, clips.scheduled_at,
             clips.gen_title, clips.filename, videos.id AS video_id, videos.title
      FROM clips JOIN videos ON videos.id = clips.video_id
      WHERE videos.status = 'ready'
      ORDER BY clips.scheduled_at ASC LIMIT 200`
-  ).all().map((c) => ({
-    ...c,
-    uploads: db.prepare(
-      `SELECT uploads.platform, uploads.status, accounts.display_name AS account_name
-       FROM uploads LEFT JOIN accounts ON accounts.id = uploads.account_id
-       WHERE uploads.clip_id = ?`
-    ).all(c.id),
-  }));
+  );
+  const upcoming = [];
+  for (const c of clips) {
+    upcoming.push({
+      ...c,
+      scheduled_at: Number(c.scheduled_at),
+      uploads: await q(
+        `SELECT uploads.platform, uploads.status, accounts.display_name AS account_name
+         FROM uploads LEFT JOIN accounts ON accounts.id = uploads.account_id
+         WHERE uploads.clip_id = ?`,
+        [c.id]
+      ),
+    });
+  }
 
-  const history = db.prepare(
+  const history = (await q(
     `SELECT uploads.platform, uploads.status, uploads.error, uploads.uploaded_at,
             uploads.attempts, uploads.platform_video_id, accounts.display_name AS account_name,
             clips.part_number, clips.total_parts, videos.id AS video_id, videos.title
@@ -286,18 +318,18 @@ router.get("/schedule", (req, res) => {
      JOIN videos ON videos.id = clips.video_id
      WHERE uploads.status IN ('done', 'failed')
      ORDER BY COALESCE(uploads.uploaded_at, 0) DESC, uploads.id DESC LIMIT 100`
-  ).all();
+  )).map((u) => ({ ...u, uploaded_at: u.uploaded_at ? Number(u.uploaded_at) : null }));
 
   res.json({ upcoming, history });
-});
+}));
 
 const EMPTY = { views: 0, likes: 0, comments: 0, shares: 0, saves: 0 };
 const addInto = (target, m) => {
   for (const key of Object.keys(EMPTY)) target[key] += Number(m?.[key] || 0);
 };
 
-router.get("/analytics", (req, res) => {
-  const rows = db.prepare(
+router.get("/analytics", wrap(async (req, res) => {
+  const rows = await q(
     `SELECT uploads.id, uploads.platform, uploads.metrics_json, uploads.metrics_at,
             uploads.uploaded_at, uploads.platform_video_id, uploads.public_post_id,
             accounts.id AS account_id, accounts.display_name AS account_name,
@@ -308,8 +340,8 @@ router.get("/analytics", (req, res) => {
      JOIN clips ON clips.id = uploads.clip_id
      JOIN videos ON videos.id = clips.video_id
      WHERE uploads.status = 'done'
-     ORDER BY uploads.uploaded_at DESC`
-  ).all();
+     ORDER BY COALESCE(uploads.uploaded_at, 0) DESC`
+  );
 
   const totals = { ...EMPTY, posts: rows.length, withMetrics: 0 };
   const accounts = new Map();
@@ -321,7 +353,7 @@ router.get("/analytics", (req, res) => {
     if (metrics) {
       totals.withMetrics++;
       addInto(totals, metrics);
-      lastFetched = Math.max(lastFetched || 0, row.metrics_at || 0);
+      lastFetched = Math.max(lastFetched || 0, Number(row.metrics_at) || 0);
     }
 
     if (!accounts.has(row.account_id)) {
@@ -348,7 +380,7 @@ router.get("/analytics", (req, res) => {
       part: row.part_number,
       totalParts: row.total_parts,
       genTitle: row.gen_title,
-      uploadedAt: row.uploaded_at,
+      uploadedAt: row.uploaded_at ? Number(row.uploaded_at) : null,
       metrics,
     });
   }
@@ -360,15 +392,15 @@ router.get("/analytics", (req, res) => {
     accounts: [...accounts.values()].sort((a, b) => b.views - a.views),
     videos: [...videos.values()].sort((a, b) => b.views - a.views),
   });
-});
+}));
 
-router.post("/metrics/refresh", (req, res) => {
+router.post("/metrics/refresh", wrap(async (req, res) => {
   // Fire and forget; the analytics endpoint reflects progress.
   refreshMetrics().catch((err) => console.error("[metrics] manual refresh:", err));
   res.json({ ok: true });
-});
+}));
 
-router.get("/settings", (req, res) => {
+router.get("/settings", wrap(async (req, res) => {
   res.json({
     branding: {
       siteDomain: config.siteDomain,
@@ -398,6 +430,7 @@ router.get("/settings", (req, res) => {
       baseUrl: config.baseUrl,
       port: config.port,
       authEnabled: authEnabled(),
+      database: dbKind === "postgres" ? "Postgres (DATABASE_URL)" : "SQLite (data/app.db)",
       uptimeSeconds: Math.round(process.uptime()),
       queueDepth: queueLength(),
       nodeVersion: process.version,
@@ -409,6 +442,6 @@ router.get("/settings", (req, res) => {
       ),
     },
   });
-});
+}));
 
 export default router;
