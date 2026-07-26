@@ -193,6 +193,45 @@ export async function reflowOverdueClips(now = Date.now()) {
   return moved;
 }
 
+// Accounts with a posting cadence set ignore the global clip timeline: they
+// post the next pending part of their assigned videos at their own rhythm
+// (e.g. every 30 minutes on X, every 2 hours on YouTube). One post per
+// cadence window; part order within a video is always preserved.
+async function cadencePublish(account, now) {
+  const gapMs = Number(account.min_gap_hours) * 3600 * 1000;
+  const last = await q1(
+    "SELECT MAX(uploaded_at) AS t FROM uploads WHERE account_id = ? AND status = 'done'",
+    [account.id]
+  );
+  if (Number(last?.t || 0) && now - Number(last.t) < gapMs) return;
+
+  // Next eligible clip: assigned to this account, not yet posted/in-flight
+  // here (a failed-with-retry attempt becomes eligible again once its retry
+  // time passes), and with every earlier part of the same video settled
+  // (posted, or given up after all retries so it can't block forever).
+  const clip = await q1(
+    `SELECT clips.*, videos.title FROM clips
+     JOIN videos ON videos.id = clips.video_id
+     JOIN video_accounts va ON va.video_id = videos.id AND va.platform = ? AND va.account_id = ?
+     WHERE videos.status = 'ready' AND videos.publish_mode = 'auto'
+       AND NOT EXISTS (
+         SELECT 1 FROM uploads u WHERE u.clip_id = clips.id AND u.account_id = ?
+           AND (u.status IN ('done', 'uploading')
+                OR (u.status = 'failed' AND (u.next_attempt_at IS NULL OR u.next_attempt_at > ?)))
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM clips c2 WHERE c2.video_id = clips.video_id AND c2.part_number < clips.part_number
+           AND NOT EXISTS (
+             SELECT 1 FROM uploads u2 WHERE u2.clip_id = c2.id AND u2.account_id = ?
+               AND (u2.status = 'done' OR (u2.status = 'failed' AND u2.next_attempt_at IS NULL))
+           )
+       )
+     ORDER BY videos.created_at ASC, clips.part_number ASC LIMIT 1`,
+    [account.platform, account.id, account.id, now, account.id]
+  );
+  if (clip) await publish(account, clip, { title: clip.title });
+}
+
 async function tick() {
   if (running) return;
   running = true;
@@ -201,19 +240,42 @@ async function tick() {
     if (!activePlatforms.length) return;
 
     await reflowOverdueClips();
+    const now = Date.now();
 
+    // Make sure every ready auto video has an account assigned on each
+    // platform (rotation, least-used first) so cadence accounts can see
+    // their queue even before the global timeline makes clips due.
+    const autoVideos = await q(
+      "SELECT id FROM videos WHERE status = 'ready' AND publish_mode = 'auto'"
+    );
+    for (const video of autoVideos) {
+      for (const platform of activePlatforms) {
+        await accountForVideo(video.id, platform);
+      }
+    }
+
+    // Cadence-driven accounts post at their own rhythm.
+    const accounts = await q("SELECT * FROM accounts");
+    for (const account of accounts) {
+      if (Number(account.min_gap_hours || 0) > 0) {
+        await cadencePublish(account, now);
+      }
+    }
+
+    // Default-schedule accounts follow the global clip timeline.
     const dueClips = await q(
       `SELECT clips.*, videos.title FROM clips
        JOIN videos ON videos.id = clips.video_id
        WHERE videos.status = 'ready' AND videos.publish_mode = 'auto' AND clips.scheduled_at <= ?
        ORDER BY clips.scheduled_at ASC`,
-      [Date.now()]
+      [now]
     );
 
     for (const clip of dueClips) {
       for (const platform of activePlatforms) {
         const account = await accountForVideo(clip.video_id, platform);
         if (!account) continue;
+        if (Number(account.min_gap_hours || 0) > 0) continue; // cadence handles it
 
         const upload = await q1(
           "SELECT * FROM uploads WHERE clip_id = ? AND account_id = ?",
@@ -224,19 +286,6 @@ async function tick() {
           upload.next_attempt_at != null &&
           Number(upload.next_attempt_at) <= Date.now();
         if (upload && !retryDue) continue;
-
-        // Per-account rate limit: hold the post until this account's minimum
-        // gap since its last successful post has passed. The clip stays due,
-        // so it publishes automatically on a later tick.
-        const gapMs = Number(account.min_gap_hours || 0) * 3600 * 1000;
-        if (gapMs > 0) {
-          const last = await q1(
-            "SELECT MAX(uploaded_at) AS t FROM uploads WHERE account_id = ? AND status = 'done'",
-            [account.id]
-          );
-          const lastPost = Number(last?.t || 0);
-          if (lastPost && Date.now() - lastPost < gapMs) continue;
-        }
 
         await publish(account, clip, { title: clip.title });
       }

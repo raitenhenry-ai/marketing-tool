@@ -31,8 +31,8 @@ document.addEventListener("change", async (e) => {
       body: JSON.stringify({ minGapHours: Number(select.value) }),
     });
     toast(Number(select.value)
-      ? `Saved — this account now posts at most once every ${select.options[select.selectedIndex].text.toLowerCase()}`
-      : "Saved — no posting limit on this account");
+      ? `Saved — this account now posts its queue ${select.options[select.selectedIndex].text.toLowerCase()}`
+      : "Saved — this account follows the default schedule");
   } catch (err) {
     toast(err.message, "error");
     load();
@@ -56,19 +56,21 @@ document.addEventListener("click", async (e) => {
 });
 
 const GAP_OPTIONS = [
-  [0, "No limit"],
-  [1, "1 hour"], [2, "2 hours"], [3, "3 hours"], [4, "4 hours"],
-  [6, "6 hours"], [8, "8 hours"], [12, "12 hours"],
-  [24, "1 day"], [48, "2 days"], [72, "3 days"], [168, "1 week"],
+  [0, "Default schedule"],
+  [0.25, "every 15 min"], [0.5, "every 30 min"], [0.75, "every 45 min"],
+  [1, "every hour"], [1.5, "every 1.5 hours"], [2, "every 2 hours"],
+  [3, "every 3 hours"], [4, "every 4 hours"], [6, "every 6 hours"],
+  [8, "every 8 hours"], [12, "every 12 hours"], [24, "every day"],
+  [48, "every 2 days"], [72, "every 3 days"], [168, "every week"],
 ];
 
 function gapSelect(a) {
   const current = Number(a.minGapHours || 0);
   const options = GAP_OPTIONS.some(([v]) => v === current)
     ? GAP_OPTIONS
-    : [...GAP_OPTIONS, [current, `${current} hours`]].sort((x, y) => x[0] - y[0]);
-  return `<label class="gap-control" title="Minimum time between posts on this account">
-    <span>posts at most every</span>
+    : [...GAP_OPTIONS, [current, `every ${current} hours`]].sort((x, y) => x[0] - y[0]);
+  return `<label class="gap-control" title="This account's own posting rhythm. 'Default schedule' follows the global part timeline; any other value makes the account post its next pending clip at that pace.">
+    <span>posts</span>
     <select class="input input-sm" data-gap-account="${a.id}">
       ${options.map(([v, label]) =>
         `<option value="${v}" ${v === current ? "selected" : ""}>${label}</option>`).join("")}
