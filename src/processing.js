@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import os from "node:os";
 import path from "node:path";
 import config from "./config.js";
 import db from "./db.js";
@@ -27,15 +28,17 @@ async function probe(filePath) {
   const out = await run(config.ffprobePath, [
     "-v", "error",
     "-select_streams", "v:0",
-    "-show_entries", "format=duration:stream=width,height",
+    "-show_entries", "format=duration:stream=width,height,r_frame_rate",
     "-of", "json",
     filePath,
   ]);
   const data = JSON.parse(out);
+  const [num, den] = String(data.streams?.[0]?.r_frame_rate || "30/1").split("/").map(Number);
   return {
     duration: Number(data.format?.duration || 0),
     width: Number(data.streams?.[0]?.width || 1920),
     height: Number(data.streams?.[0]?.height || 1080),
+    fps: den ? num / den : 30,
   };
 }
 
@@ -43,28 +46,50 @@ function escapeFilterPath(p) {
   return p.replace(/\\/g, "/").replace(/:/g, "\\:").replace(/'/g, "\\'");
 }
 
-function buildArgs({ inputPath, outputPath, start, length, overlayAssPath, subsAssPath }) {
+async function mapLimit(items, limit, fn) {
+  const results = new Array(items.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, async () => {
+      while (next < items.length) {
+        const i = next++;
+        results[i] = await fn(items[i], i);
+      }
+    })
+  );
+  return results;
+}
+
+function buildArgs({ inputPath, outputPath, start, length, overlayAssPath, subsAssPath, out, source }) {
   const args = ["-y", "-ss", String(start), "-i", inputPath, "-t", String(length)];
   // Badges first, then subtitles on top.
   let text = `ass='${escapeFilterPath(overlayAssPath)}'`;
   if (subsAssPath) text += `,ass='${escapeFilterPath(subsAssPath)}'`;
 
+  // 60fps sources encode at half speed for no benefit on short-form feeds.
+  const fpsCap = source?.fps > 31 ? "fps=30," : "";
+
   if (config.verticalFormat) {
-    // 1080x1920 canvas: darkened, heavily blurred cover-fit background with
-    // the original video fitted on top (Lanczos scale + mild sharpen so it
-    // stays crisp), then the badge/subtitle overlays.
+    // Vertical canvas: darkened, blurred cover-fit background with the
+    // original video fitted on top, then the badge/subtitle overlays.
+    // The background is blurred at quarter resolution and scaled back up:
+    // visually identical (blur destroys detail anyway) and drastically
+    // cheaper than blurring the full frame.
+    const { width: W, height: H } = out;
+    const bw = Math.round(W / 8) * 2;
+    const bh = Math.round(H / 8) * 2;
     args.push(
+      "-filter_complex_threads", String(os.availableParallelism?.() || 4),
       "-filter_complex",
-      `[0:v]split=2[bg][fg];` +
-        `[bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,` +
-        `boxblur=32:6,eq=brightness=-0.08:saturation=0.85[bgb];` +
-        `[fg]scale=1080:1920:force_original_aspect_ratio=decrease:flags=lanczos,` +
-        `unsharp=5:5:0.3:5:5:0.0[fgs];` +
+      `[0:v]${fpsCap}split=2[bg][fg];` +
+        `[bg]scale=${bw}:${bh}:force_original_aspect_ratio=increase,crop=${bw}:${bh},` +
+        `boxblur=8:2,eq=brightness=-0.08:saturation=0.85,scale=${W}:${H}[bgb];` +
+        `[fg]scale=${W}:${H}:force_original_aspect_ratio=decrease:flags=bicubic[fgs];` +
         `[bgb][fgs]overlay=(W-w)/2:(H-h)/2,${text}[v]`,
       "-map", "[v]", "-map", "0:a?"
     );
   } else {
-    args.push("-vf", text);
+    args.push("-vf", `${fpsCap}${text}`);
   }
 
   args.push(
@@ -158,16 +183,15 @@ export async function processVideo(videoId) {
     );
 
     const out = config.verticalFormat
-      ? { width: 1080, height: 1920 }
+      ? { width: Math.round((config.verticalHeight * 9) / 16 / 2) * 2, height: config.verticalHeight }
       : { width: source.width, height: source.height };
 
-    const clipRows = [];
-    for (let i = 0; i < totalParts; i++) {
-      const { start, end } = segments[i];
+    // Phase 1 - network-bound: transcribe every clip window and generate its
+    // metadata in parallel (capped), so the CPU-bound encode phase never
+    // sits idle waiting on API calls.
+    const assets = await mapLimit(segments, 4, async ({ start, end }, i) => {
       const length = end - start;
       const outBase = path.join(config.clipsDir, `video${video.id}-part${i + 1}`);
-      const filename = `video${video.id}-part${i + 1}.mp4`;
-      const outputPath = path.join(config.clipsDir, filename);
 
       const overlayAssPath = `${outBase}.overlay.ass`;
       fs.writeFileSync(
@@ -211,7 +235,6 @@ export async function processVideo(videoId) {
             part: i + 1,
             totalParts,
           });
-          console.log(`[processing] video ${video.id} part ${i + 1} title: "${meta.title}"`);
         } catch (err) {
           console.warn(
             `[processing] video ${video.id} part ${i + 1}: metadata skipped -`,
@@ -220,11 +243,36 @@ export async function processVideo(videoId) {
         }
       }
 
+      return { overlayAssPath, subsAssPath, meta };
+    });
+
+    // Phase 2 - CPU-bound: encode the clips one after another.
+    const clipRows = [];
+    for (let i = 0; i < totalParts; i++) {
+      const { start, end } = segments[i];
+      const length = end - start;
+      const filename = `video${video.id}-part${i + 1}.mp4`;
+      const outputPath = path.join(config.clipsDir, filename);
+
+      const t0 = Date.now();
       await run(
         config.ffmpegPath,
-        buildArgs({ inputPath: video.path, outputPath, start, length, overlayAssPath, subsAssPath })
+        buildArgs({
+          inputPath: video.path,
+          outputPath,
+          start,
+          length,
+          overlayAssPath: assets[i].overlayAssPath,
+          subsAssPath: assets[i].subsAssPath,
+          out,
+          source,
+        })
       );
-      clipRows.push({ part: i + 1, totalParts, filename, length, meta });
+      console.log(
+        `[processing] video ${video.id} part ${i + 1}/${totalParts}: ` +
+          `${Math.round(length)}s clip encoded in ${((Date.now() - t0) / 1000).toFixed(1)}s`
+      );
+      clipRows.push({ part: i + 1, totalParts, filename, length, meta: assets[i].meta });
     }
 
     // Schedule only after every clip rendered successfully: part 1 goes out

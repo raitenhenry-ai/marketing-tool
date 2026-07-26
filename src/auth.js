@@ -54,20 +54,23 @@ function loginPage(error) {
   return `<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sign in</title>
+<script>document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";</script>
 <style>
-  body{font-family:-apple-system,"Segoe UI",Roboto,sans-serif;background:#0f1218;color:#e8eaf0;
+  :root{--bg:#0a0d13;--surface:#10141c;--border:#222a3a;--text:#e7eaf1;--muted:#6d7688;--accent:#3b76f0;--err:#dd5959}
+  :root[data-theme="light"]{--bg:#f3f5f9;--surface:#fff;--border:#d4dae6;--text:#1b2334;--muted:#687087;--accent:#2e63d8;--err:#c23b3b}
+  body{font-family:-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);
        display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
-  form{background:#171c26;border:1px solid #262d3b;border-radius:12px;padding:32px;width:300px}
-  h1{font-size:1.1rem;margin:0 0 16px}
-  input{width:100%;box-sizing:border-box;background:#0f1218;border:1px solid #262d3b;border-radius:8px;
-        color:#e8eaf0;padding:10px 12px;margin-bottom:12px;font-size:1rem}
-  button{width:100%;background:#2f6fed;color:#fff;border:0;border-radius:8px;padding:10px;font-size:1rem;cursor:pointer}
-  .err{color:#d89f9f;font-size:.85rem;margin-bottom:12px}
+  form{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:32px;width:300px}
+  input{width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);border-radius:8px;
+        color:var(--text);padding:10px 12px;margin-bottom:12px;font-size:1rem}
+  button{width:100%;background:var(--accent);color:#fff;border:0;border-radius:8px;padding:10px;font-size:1rem;cursor:pointer}
+  .err{color:var(--err);font-size:.85rem;margin-bottom:12px}
+  .sub{font-size:11px;color:var(--muted);margin-top:-3px}
 </style></head><body>
 <form method="post" action="/login">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
     <div style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#3b76f0,#7a4ff0);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800">▶</div>
-    <div><div style="font-weight:700">ShortForm</div><div style="font-size:11px;color:#6d7688;margin-top:-3px">content manager</div></div>
+    <div><div style="font-weight:700">ShortForm</div><div class="sub">content manager</div></div>
   </div>
   ${error ? '<div class="err">Wrong password, try again.</div>' : ""}
   <input type="password" name="password" placeholder="Password" autofocus required>

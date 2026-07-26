@@ -35,6 +35,8 @@ export const icons = {
   scissors: stroke('<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/>'),
   captions: stroke('<rect x="2" y="4" width="20" height="16" rx="2.5"/><path d="M6 13h4M6 16h8M14 13h4"/>'),
   sparkle: stroke('<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/>'),
+  sun: stroke('<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>'),
+  moon: stroke('<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'),
   youtube: stroke('<path d="M22.5 6.4a3 3 0 0 0-2.1-2.1C18.5 3.8 12 3.8 12 3.8s-6.5 0-8.4.5A3 3 0 0 0 1.5 6.4 31 31 0 0 0 1 12a31 31 0 0 0 .5 5.6 3 3 0 0 0 2.1 2.1c1.9.5 8.4.5 8.4.5s6.5 0 8.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 23 12a31 31 0 0 0-.5-5.6z"/><polygon points="10 15 15 12 10 9"/>'),
   instagram: stroke('<rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>'),
   tiktok: stroke('<path d="M9 12a4 4 0 1 0 4 4V4c.7 2.3 2.7 4.6 6 5"/>'),
@@ -213,7 +215,22 @@ export function initShell({ title, crumb = null, actions = "" }) {
   topbar.className = "topbar";
   topbar.innerHTML = `
     <h1>${crumb ? `<a class="crumb" href="${crumb.href}">${esc(crumb.label)}</a> <span class="crumb">/</span> ` : ""}${esc(title)}</h1>
-    <div class="topbar-actions">${actions}</div>`;
+    <div class="topbar-actions">
+      ${actions}
+      <button class="icon-btn" id="theme-btn" title="Toggle light/dark theme"></button>
+    </div>`;
+
+  const themeBtn = $("#theme-btn");
+  const applyThemeIcon = () => {
+    themeBtn.innerHTML = document.documentElement.dataset.theme === "light" ? icons.moon : icons.sun;
+  };
+  applyThemeIcon();
+  themeBtn.addEventListener("click", () => {
+    const next = document.documentElement.dataset.theme === "light" ? "dark" : "light";
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem("theme", next);
+    applyThemeIcon();
+  });
 
   $("#logout-btn").addEventListener("click", async () => {
     await fetch("/logout", { method: "POST" });

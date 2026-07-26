@@ -29,11 +29,14 @@ const config = {
   pruneVideosAfterDays: Number(process.env.PRUNE_VIDEOS_AFTER_DAYS ?? 0),
   verticalFormat: (process.env.VERTICAL_FORMAT || "true").toLowerCase() !== "false",
 
-  // Encoding quality. CRF 18 is visually near-lossless; platforms re-encode
-  // uploads, so a high-quality source is what keeps the final result crisp.
-  videoCrf: Number(process.env.VIDEO_CRF || 18),
-  videoPreset: process.env.VIDEO_PRESET || "medium",
+  // Encoding speed/quality. veryfast + CRF 20 is the sweet spot for shared
+  // vCPUs: the platforms re-encode uploads anyway, so the last few percent
+  // of source quality (slower presets, lower CRF) rarely survives to viewers.
+  videoCrf: Number(process.env.VIDEO_CRF || 20),
+  videoPreset: process.env.VIDEO_PRESET || "superfast",
   normalizeAudio: (process.env.NORMALIZE_AUDIO || "true").toLowerCase() !== "false",
+  // Vertical canvas height: 1920 (1080p) or 1280 (720p, ~2x faster encode).
+  verticalHeight: Number(process.env.VERTICAL_HEIGHT || 1920),
 
   // Auto-subtitles via OpenAI Whisper; disabled when no API key is set.
   openaiApiKey: process.env.OPENAI_API_KEY || "",

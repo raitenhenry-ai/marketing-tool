@@ -87,8 +87,9 @@ All settings live in `.env` (see `.env.example`):
 | `CLIP_DURATION_SECONDS` | `120` | Length of each clip |
 | `UPLOAD_INTERVAL_HOURS` | `3` | Gap between consecutive parts |
 | `VERTICAL_FORMAT` | `true` | Render 1080×1920 vertical with blurred background |
-| `VIDEO_CRF` | `18` | Encode quality (lower = better/bigger; 18 ≈ near-lossless) |
-| `VIDEO_PRESET` | `medium` | x264 speed/quality trade-off; use `fast` on weak servers |
+| `VIDEO_CRF` | `20` | Encode quality (lower = better/bigger) |
+| `VIDEO_PRESET` | `superfast` | x264 speed/quality trade-off (`ultrafast` … `medium`) |
+| `VERTICAL_HEIGHT` | `1920` | Output height; `1280` (720p) encodes ~2× faster |
 | `NORMALIZE_AUDIO` | `true` | Normalize loudness to the -14 LUFS platform target |
 | `YOUTUBE_PRIVACY_STATUS` | `public` | `public`, `unlisted` or `private` |
 
@@ -98,6 +99,22 @@ All settings live in `.env` (see `.env.example`):
 - **Processing queue**: videos encode one at a time (parallel ffmpeg runs would thrash a small server). If the server restarts mid-encode, interrupted videos are automatically re-queued on boot; failed videos get a Retry button.
 - **Health**: `GET /healthz` (no auth) reports uptime and queue depth; the Dockerfile ships a matching `HEALTHCHECK`.
 - **Disk**: originals are cleaned up after `DELETE_ORIGINALS_AFTER_DAYS`; deleting a video in the UI removes all its files. `PRUNE_VIDEOS_AFTER_DAYS` can additionally auto-delete old fully-published videos.
+
+## Processing speed
+
+Encoding is CPU-bound; a 2-minute 1080×1920 clip takes roughly 40–90 s on 4
+shared vCPUs with the default settings. The levers, in order of impact:
+
+1. **CPU cores** — encode time scales almost linearly with cores. On Railway,
+   raise the service's vCPU allocation.
+2. **`VERTICAL_HEIGHT=1280`** — 720p output, about twice as fast, still crisp
+   on phones.
+3. **`VIDEO_PRESET=ultrafast`** — another ~20 % on top of `superfast`, with a
+   visible-but-small quality cost.
+
+Transcription/AI-metadata calls all run in parallel before encoding starts, so
+they add almost nothing to total wall time. 60 fps sources are capped to 30 fps
+(halves encode time, no visible difference in feeds).
 
 ## How scheduling works
 
