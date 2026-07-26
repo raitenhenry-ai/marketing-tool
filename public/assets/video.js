@@ -32,12 +32,15 @@ document.addEventListener("click", async (e) => {
 });
 
 function clipCard(c, video) {
+  const manual = video.publishMode !== "auto";
   const due = c.scheduledAt <= Date.now();
-  const scheduleLine = c.uploads.length
+  const scheduleLine = manual || c.uploads.length
     ? ""
     : due
       ? `<span class="badge scheduled"><span class="bdot"></span>publish window open</span>`
       : `<span class="clip-when">${icons.clock} ${relTime(c.scheduledAt)} · ${fmtDateTime(c.scheduledAt)}</span>`;
+  const partPad = String(c.part).padStart(2, "0");
+  const downloadName = `Part ${partPad} of ${String(c.totalParts).padStart(2, "0")}${c.genTitle ? ` - ${c.genTitle.replace(/[<>:"/\\|?*]/g, "")}` : ""}.mp4`;
 
   const hashtags = c.genHashtags?.length
     ? `<div>${c.genHashtags.slice(0, 8).map((h) => `<span class="hashtag">${esc(h)}</span>`).join("")}</div>`
@@ -56,7 +59,10 @@ function clipCard(c, video) {
     <div class="clip-body">
       <div class="clip-head">
         <span class="clip-part">Part ${c.part}/${c.totalParts}</span>
-        <span class="muted" style="font-size:12px">${fmtDuration(c.durationSeconds)}</span>
+        <span class="flex" style="gap:6px">
+          <span class="muted" style="font-size:12px">${fmtDuration(c.durationSeconds)}</span>
+          <a class="icon-btn" title="Download this clip" href="${c.url}" download="${esc(downloadName)}">${icons.download}</a>
+        </span>
       </div>
       ${c.genTitle ? `<div class="clip-gen-title" title="${esc(c.genDescription || "")}">“${esc(c.genTitle)}”</div>` : ""}
       ${hashtags}
@@ -86,10 +92,13 @@ async function load() {
 
   document.title = `${v.title} · ShortForm Manager`;
 
-  const accounts = v.accounts.length
-    ? v.accounts.map((a) =>
-        `<span class="chip"><span class="pdot ${a.platform}"></span>${PLATFORMS[a.platform]} · ${esc(a.account_name)}</span>`).join(" ")
-    : `<span class="muted" style="font-size:13px">Accounts are assigned when the first part publishes.</span>`;
+  const manual = v.publishMode !== "auto";
+  const accounts = manual
+    ? `<span class="badge">download only — nothing is auto-posted</span>`
+    : v.accounts.length
+      ? v.accounts.map((a) =>
+          `<span class="chip"><span class="pdot ${a.platform}"></span>${PLATFORMS[a.platform]} · ${esc(a.account_name)}</span>`).join(" ")
+      : `<span class="muted" style="font-size:13px">Accounts are assigned when the first part publishes.</span>`;
 
   $("#video-head").innerHTML = `
     <div class="flex" style="align-items:flex-start; gap:16px; flex-wrap:wrap">
@@ -108,6 +117,8 @@ async function load() {
       </div>
       <div class="spacer"></div>
       <div class="flex">
+        ${v.status === "ready" && v.clips.length
+          ? `<a class="btn" href="/api/videos/${v.id}/download.zip">${icons.download} Download ZIP</a>` : ""}
         ${v.status === "failed" ? `<button class="btn btn-secondary" id="retry-btn">${icons.retry} Retry</button>` : ""}
         <button class="btn btn-danger" id="delete-btn">${icons.trash} Delete</button>
       </div>

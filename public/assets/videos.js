@@ -97,6 +97,12 @@ function renderRows() {
       ? v.accounts.map((a) =>
           `<span class="chip"><span class="pdot ${a.platform}"></span>${esc(a.account_name)}</span>`).join(" ")
       : `<span class="muted">assigned at first publish</span>`;
+    const manual = v.publishMode !== "auto";
+    const publishCell = manual
+      ? `<span class="badge">download only</span>`
+      : next
+        ? `<div class="row-title">${relTime(next.scheduledAt)}</div><div class="row-sub">Part ${next.part} · ${fmtDateTime(next.scheduledAt)}</div>`
+        : v.status === "ready" ? `<span class="muted">all sent</span>` : `<span class="muted">—</span>`;
     return `<tr>
       <td>
         <div class="row-title"><a href="/video.html?id=${v.id}">${esc(v.title)}</a></div>
@@ -105,13 +111,12 @@ function renderRows() {
       <td>${statusBadge(v.status)}</td>
       <td>
         <div class="row-title">${v.clips.length || "—"}</div>
-        ${v.clips.length ? `<div class="row-sub">${pub}/${v.clips.length} published</div>` : ""}
+        ${v.clips.length ? `<div class="row-sub">${manual ? `${v.clips.length} to download` : `${pub}/${v.clips.length} published`}</div>` : ""}
       </td>
-      <td>${accounts}</td>
-      <td>${next
-        ? `<div class="row-title">${relTime(next.scheduledAt)}</div><div class="row-sub">Part ${next.part} · ${fmtDateTime(next.scheduledAt)}</div>`
-        : v.status === "ready" ? `<span class="muted">all sent</span>` : `<span class="muted">—</span>`}</td>
+      <td>${manual ? `<span class="muted">manual</span>` : accounts}</td>
+      <td>${publishCell}</td>
       <td class="nowrap">
+        ${v.status === "ready" && v.clips.length ? `<a class="icon-btn" title="Download ZIP" href="/api/videos/${v.id}/download.zip">${icons.download}</a>` : ""}
         ${v.status === "failed" ? `<button class="icon-btn" title="Retry processing" data-retry="${v.id}">${icons.retry}</button>` : ""}
         <button class="icon-btn danger" title="Delete" data-del="${v.id}">${icons.trash}</button>
       </td>

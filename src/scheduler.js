@@ -70,7 +70,7 @@ export async function freshAccount(accountId) {
 
 // Builds the YouTube title and the caption/description text for a clip,
 // preferring the AI-generated metadata and falling back to "<video> - Part N".
-function textsFor(video, clip) {
+export function textsFor(video, clip) {
   const part = clip.total_parts > 1 ? ` - Part ${clip.part_number}/${clip.total_parts}` : "";
   const hashtags = JSON.parse(clip.gen_hashtags || "[]").join(" ");
 
@@ -154,7 +154,7 @@ export async function reflowOverdueClips(now = Date.now()) {
   const videos = await q(
     `SELECT DISTINCT clips.video_id AS video_id FROM clips
      JOIN videos ON videos.id = clips.video_id
-     WHERE videos.status = 'ready' AND clips.scheduled_at <= ?
+     WHERE videos.status = 'ready' AND videos.publish_mode = 'auto' AND clips.scheduled_at <= ?
        AND NOT EXISTS (SELECT 1 FROM uploads WHERE uploads.clip_id = clips.id)`,
     [now]
   );
@@ -205,7 +205,7 @@ async function tick() {
     const dueClips = await q(
       `SELECT clips.*, videos.title FROM clips
        JOIN videos ON videos.id = clips.video_id
-       WHERE videos.status = 'ready' AND clips.scheduled_at <= ?
+       WHERE videos.status = 'ready' AND videos.publish_mode = 'auto' AND clips.scheduled_at <= ?
        ORDER BY clips.scheduled_at ASC`,
       [Date.now()]
     );

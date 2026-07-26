@@ -12,7 +12,7 @@ import { parseCuts } from "../cuts.js";
 import { deleteVideoFiles } from "../cleanup.js";
 import { authEnabled } from "../auth.js";
 import { refreshMetrics, metricsStatus } from "../metrics.js";
-import { platforms } from "../scheduler.js";
+import { platforms, textsFor } from "../scheduler.js";
 
 const PLATFORM_KEYS = Object.keys(platforms); // youtube, instagram, tiktok, facebook, x
 
@@ -82,11 +82,12 @@ router.post("/videos", upload.single("video"), wrap(async (req, res) => {
     return res.status(400).json({ error: String(err.message || err) });
   }
 
+  const publishMode = req.body.publishMode === "auto" ? "auto" : "manual";
   const row = await q1(
-    `INSERT INTO videos (title, original_filename, path, status, cuts_json, created_at)
-     VALUES (?, ?, ?, 'processing', ?, ?) RETURNING id`,
+    `INSERT INTO videos (title, original_filename, path, status, cuts_json, publish_mode, created_at)
+     VALUES (?, ?, ?, 'processing', ?, ?, ?) RETURNING id`,
     [title, req.file.originalname || req.file.filename, req.file.path,
-     cuts ? JSON.stringify(cuts) : null, Date.now()]
+     cuts ? JSON.stringify(cuts) : null, publishMode, Date.now()]
   );
 
   // Queued (one encode at a time) - progress is visible via GET /api/videos.
@@ -147,6 +148,7 @@ router.get("/videos", wrap(async (req, res) => {
       title: v.title,
       status: v.status,
       error: v.error,
+      publishMode: v.publish_mode || "manual",
       durationSeconds: v.duration_seconds,
       createdAt: Number(v.created_at),
       accounts,
@@ -215,12 +217,100 @@ router.get("/videos/:id", wrap(async (req, res) => {
     originalFilename: v.original_filename,
     status: v.status,
     error: v.error,
+    publishMode: v.publish_mode || "manual",
     durationSeconds: v.duration_seconds,
     createdAt: Number(v.created_at),
     cuts: v.cuts_json ? JSON.parse(v.cuts_json) : null,
     accounts: assignments,
     clips: clipsOut,
   });
+}));
+
+function safeName(text, max = 60) {
+  return String(text || "")
+    .replace(/[<>:"/\\|?*\x00-\x1f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max)
+    .replace(/[. ]+$/, "") || "untitled";
+}
+
+// Streams a well-organized ZIP of a video's clips: numbered parts named
+// after their hook titles, a ready-to-paste caption .txt beside each clip,
+// and a README describing everything.
+router.get("/videos/:id/download.zip", wrap(async (req, res) => {
+  const v = await q1("SELECT * FROM videos WHERE id = ?", [req.params.id]);
+  if (!v) return res.status(404).json({ error: "Video not found" });
+  const clips = await q("SELECT * FROM clips WHERE video_id = ? ORDER BY part_number", [v.id]);
+  if (!clips.length) return res.status(400).json({ error: "No clips yet - still processing?" });
+
+  const { ZipArchive } = await import("archiver");
+  const folder = safeName(v.title);
+  res.setHeader("Content-Type", "application/zip");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="${folder} - ${clips.length} clips.zip"`
+  );
+
+  // Videos are already compressed; store-mode keeps zipping instant.
+  const archive = new ZipArchive({ store: true });
+  archive.on("error", (err) => {
+    console.error("[zip] archive error:", err);
+    res.destroy(err);
+  });
+  archive.pipe(res);
+
+  const pad = (n) => String(n).padStart(2, "0");
+  const readmeLines = [
+    v.title,
+    "=".repeat(v.title.length),
+    "",
+    `Source file: ${v.original_filename}`,
+    `Total length: ${Math.round(v.duration_seconds || 0)}s, split into ${clips.length} part(s)`,
+    `Created: ${new Date(Number(v.created_at)).toISOString()}`,
+    "",
+    "Each part has:",
+    "  - the clip itself (.mp4) with the PART badge, site domain and subtitles burned in",
+    "  - a caption file (.txt) with the ready-to-paste title, description and hashtags",
+    "",
+    `Suggested posting schedule: part 1 now, each next part ${config.uploadIntervalHours} hours later.`,
+    "",
+    "Parts:",
+  ];
+
+  for (const c of clips) {
+    const hook = c.gen_title ? ` - ${safeName(c.gen_title, 50)}` : "";
+    const base = `Part ${pad(c.part_number)} of ${pad(c.total_parts)}${hook}`;
+    const clipPath = path.join(config.clipsDir, c.filename);
+    if (fs.existsSync(clipPath)) {
+      archive.file(clipPath, { name: `${folder}/${base}.mp4` });
+    }
+
+    const { title, caption } = textsFor(v, c);
+    const hashtags = JSON.parse(c.gen_hashtags || "[]").join(" ");
+    const captionText = [
+      `PART ${c.part_number} OF ${c.total_parts}  (${Math.round(c.duration_seconds || 0)}s)`,
+      "",
+      "TITLE (YouTube):",
+      title,
+      "",
+      "CAPTION (TikTok / Instagram / Facebook):",
+      caption,
+      "",
+      "X POST (280-char limit applied):",
+      caption.length > 275 ? `${caption.slice(0, 272).trimEnd()}…` : caption,
+      hashtags ? `\nHASHTAGS:\n${hashtags}` : "",
+      "",
+    ].join("\n");
+    archive.append(captionText, { name: `${folder}/${base} - caption.txt` });
+
+    readmeLines.push(
+      `  ${pad(c.part_number)}. ${c.gen_title || `${v.title} - Part ${c.part_number}`} (${Math.round(c.duration_seconds || 0)}s)`
+    );
+  }
+
+  archive.append(readmeLines.join("\n") + "\n", { name: `${folder}/README.txt` });
+  await archive.finalize();
 }));
 
 router.get("/stats", wrap(async (req, res) => {
@@ -231,7 +321,7 @@ router.get("/stats", wrap(async (req, res) => {
     `SELECT clips.id, clips.part_number, clips.total_parts, clips.scheduled_at,
             clips.gen_title, videos.id AS video_id, videos.title
      FROM clips JOIN videos ON videos.id = clips.video_id
-     WHERE videos.status = 'ready' AND clips.scheduled_at > ?
+     WHERE videos.status = 'ready' AND videos.publish_mode = 'auto' AND clips.scheduled_at > ?
      ORDER BY clips.scheduled_at ASC LIMIT 6`,
     [now]
   );
@@ -270,7 +360,8 @@ router.get("/stats", wrap(async (req, res) => {
       ),
       scheduled: await count(
         `SELECT COUNT(*) AS n FROM clips JOIN videos ON videos.id = clips.video_id
-         WHERE videos.status = 'ready' AND clips.scheduled_at > ?`, [now]
+         WHERE videos.status = 'ready' AND videos.publish_mode = 'auto' AND clips.scheduled_at > ?`,
+        [now]
       ),
       accounts: await count("SELECT COUNT(*) AS n FROM accounts"),
       processingVideos: await count("SELECT COUNT(*) AS n FROM videos WHERE status = 'processing'"),
@@ -291,7 +382,7 @@ router.get("/schedule", wrap(async (req, res) => {
     `SELECT clips.id, clips.part_number, clips.total_parts, clips.scheduled_at,
             clips.gen_title, clips.filename, videos.id AS video_id, videos.title
      FROM clips JOIN videos ON videos.id = clips.video_id
-     WHERE videos.status = 'ready'
+     WHERE videos.status = 'ready' AND videos.publish_mode = 'auto'
      ORDER BY clips.scheduled_at ASC LIMIT 200`
   );
   const upcoming = [];

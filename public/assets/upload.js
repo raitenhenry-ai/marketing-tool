@@ -101,9 +101,18 @@ function computeSegments() {
   return segments;
 }
 
+function publishMode() {
+  return document.querySelector('input[name="pubmode"]:checked')?.value || "manual";
+}
+
 function renderSchedulePreview() {
   const segments = computeSegments();
   const host = $("#schedule-preview");
+  if (publishMode() === "manual") {
+    host.innerHTML = `Manual mode: nothing gets posted. When processing finishes, grab the clips
+      from the video page — one by one or as an organized ZIP with captions included.`;
+    return;
+  }
   if (!file) {
     host.textContent = "Pick a file to preview when each part will publish.";
     return;
@@ -176,6 +185,8 @@ fileInput.addEventListener("change", () => setFile(fileInput.files[0]));
 dropzone.addEventListener("drop", (e) => setFile(e.dataTransfer.files[0]));
 
 $("#cuts").addEventListener("input", renderSchedulePreview);
+document.querySelectorAll('input[name="pubmode"]')
+  .forEach((el) => el.addEventListener("change", renderSchedulePreview));
 
 /* ---------- Submit ---------- */
 
@@ -190,6 +201,7 @@ $("#upload-btn").addEventListener("click", () => {
   const form = new FormData();
   form.append("title", $("#title").value);
   form.append("cuts", $("#cuts").value);
+  form.append("publishMode", publishMode());
   form.append("video", file);
 
   const btn = $("#upload-btn");
@@ -238,6 +250,8 @@ async function loadSettings() {
       clipDurationSeconds: s.branding.clipDurationSeconds,
       uploadIntervalHours: s.branding.uploadIntervalHours,
     };
+    const note = $("#interval-note");
+    if (note) note.textContent = `${s.branding.uploadIntervalHours} hours`;
     const steps = [
       { icon: "scissors", text: `Split into <strong>${fmtClipLen(s.branding.clipDurationSeconds)}</strong> parts (or your custom cuts), rendered ${s.branding.verticalFormat ? "vertical 1080×1920" : "in the original aspect"} with the <strong>PART n/total</strong> badge and <strong>${esc(s.branding.siteDomain)}</strong> burned in.` },
       { icon: "captions", text: s.ai.subtitlesEnabled

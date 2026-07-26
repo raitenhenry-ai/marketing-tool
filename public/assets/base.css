@@ -285,6 +285,17 @@ a:hover { color: var(--accent-hover); }
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 .input::placeholder { color: var(--muted); }
+
+.radio-row {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: 9px;
+  background: var(--surface-2); cursor: pointer; font-size: 13px; color: var(--text-2);
+  margin-bottom: 8px; transition: border-color 0.12s;
+}
+.radio-row:hover { border-color: var(--border); }
+.radio-row:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.radio-row input { margin-top: 3px; accent-color: var(--accent); }
+.radio-row strong { color: var(--text); }
 textarea.input { resize: vertical; min-height: 74px; font-family: var(--mono); font-size: 13px; }
 
 /* ---------- Badges, chips, pills ---------- */

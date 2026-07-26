@@ -40,6 +40,20 @@
               <div class="help" id="cuts-preview">Auto-split into equal parts.</div>
             </div>
 
+            <div class="field">
+              <label>After processing</label>
+              <label class="radio-row">
+                <input type="radio" name="pubmode" value="manual" checked />
+                <span><strong>Just give me the clips</strong> — nothing is posted; download them
+                  (individually or as an organized ZIP) whenever you like.</span>
+              </label>
+              <label class="radio-row">
+                <input type="radio" name="pubmode" value="auto" />
+                <span><strong>Auto-publish on the schedule</strong> — part 1 posts when processing
+                  finishes, each next part <span id="interval-note">3 hours</span> later, to every connected account.</span>
+              </label>
+            </div>
+
             <div class="flex">
               <button class="btn btn-lg" id="upload-btn" disabled>Upload &amp; split</button>
               <div class="spacer"></div>

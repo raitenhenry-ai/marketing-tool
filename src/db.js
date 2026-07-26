@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS videos (
   status TEXT NOT NULL DEFAULT 'processing',
   error TEXT,
   cuts_json TEXT,
+  publish_mode TEXT NOT NULL DEFAULT 'manual',
   created_at BIGINT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS clips (
@@ -102,6 +103,10 @@ if (config.databaseUrl) {
   _close = () => pool.end();
 
   await pool.query(PG_SCHEMA);
+  // Upgrades for Postgres databases created by earlier versions.
+  await pool.query(
+    "ALTER TABLE videos ADD COLUMN IF NOT EXISTS publish_mode TEXT NOT NULL DEFAULT 'manual'"
+  );
   console.log("[db] connected to Postgres");
 } else {
   const { default: Database } = await import("better-sqlite3");
@@ -245,5 +250,14 @@ CREATE TABLE IF NOT EXISTS uploads (
       }
     }
     db.pragma("user_version = 4");
+  }
+
+  // v4 -> v5: per-video publish mode (manual download vs auto-publish).
+  if (version < 5) {
+    const cols = db.prepare("PRAGMA table_info(videos)").all();
+    if (!cols.some((c) => c.name === "publish_mode")) {
+      db.exec("ALTER TABLE videos ADD COLUMN publish_mode TEXT NOT NULL DEFAULT 'manual'");
+    }
+    db.pragma("user_version = 5");
   }
 }
