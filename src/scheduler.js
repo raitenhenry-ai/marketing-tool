@@ -47,7 +47,7 @@ function accountForVideo(videoId, platform) {
 }
 
 // Refresh the access token if it expires within the next 5 minutes.
-async function freshAccount(accountId) {
+export async function freshAccount(accountId) {
   const account = db.prepare("SELECT * FROM accounts WHERE id = ?").get(accountId);
   if (!account) return null;
 

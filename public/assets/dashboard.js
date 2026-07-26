@@ -1,5 +1,5 @@
 import {
-  $, api, initShell, icons, esc, fmtDateTime, relTime, uploadChip, PLATFORMS,
+  $, api, initShell, icons, esc, fmtDateTime, relTime, uploadChip, fmtCompact, PLATFORMS,
 } from "/assets/common.js";
 
 initShell({
@@ -38,8 +38,12 @@ async function render() {
     }),
     statTile({
       icon: "send", label: "Published posts", value: t.published,
-      sub: t.failedUploads ? `${t.failedUploads} gave up after retries` : "no failed uploads",
-      subClass: t.failedUploads ? "bad" : "good",
+      sub: t.failedUploads
+        ? `${t.failedUploads} gave up after retries`
+        : t.totalViews
+          ? `<a href="/analytics.html">${fmtCompact(t.totalViews)} total views</a>`
+          : "no failed uploads",
+      subClass: t.failedUploads ? "bad" : t.totalViews ? "" : "good",
     }),
     statTile({
       icon: "accounts", label: "Connected accounts", value: t.accounts,

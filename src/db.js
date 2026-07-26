@@ -127,4 +127,20 @@ if (version < 3) {
   db.pragma("user_version = 3");
 }
 
+// v3 -> v4: per-upload platform metrics (views/likes/...), plus the public
+// post id for TikTok (whose publish flow returns an internal id first).
+if (version < 4) {
+  const cols = db.prepare("PRAGMA table_info(uploads)").all();
+  for (const [col, type] of [
+    ["metrics_json", "TEXT"],
+    ["metrics_at", "INTEGER"],
+    ["public_post_id", "TEXT"],
+  ]) {
+    if (!cols.some((c) => c.name === col)) {
+      db.exec(`ALTER TABLE uploads ADD COLUMN ${col} ${type}`);
+    }
+  }
+  db.pragma("user_version = 4");
+}
+
 export default db;

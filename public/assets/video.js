@@ -1,6 +1,6 @@
 import {
   $, api, initShell, icons, esc, toast, confirmDialog, statusBadge,
-  fmtDateTime, fmtDuration, relTime, uploadChip, PLATFORMS,
+  fmtDateTime, fmtDuration, relTime, uploadChip, fmtCompact, PLATFORMS,
 } from "/assets/common.js";
 
 const id = new URLSearchParams(location.search).get("id");
@@ -62,6 +62,12 @@ function clipCard(c, video) {
       ${hashtags}
       ${scheduleLine}
       <div class="clip-uploads">${c.uploads.map(uploadChip).join("")}</div>
+      ${c.uploads.some((u) => u.metrics) ? `
+        <div class="muted" style="font-size:12px">
+          ${c.uploads.filter((u) => u.metrics).map((u) =>
+            `${PLATFORMS[u.platform]}: ${fmtCompact(u.metrics.views)} views · ${fmtCompact(u.metrics.likes)} likes · ${fmtCompact(u.metrics.comments)} comments`
+          ).join("<br>")}
+        </div>` : ""}
       ${links ? `<div style="font-size:12.5px;display:flex;gap:4px;align-items:center">${links}</div>` : ""}
     </div>
   </div>`;

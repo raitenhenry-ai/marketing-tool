@@ -8,6 +8,7 @@ import apiRoutes from "./routes/api.js";
 import { registerAuthRoutes, authMiddleware, authEnabled } from "./auth.js";
 import { startScheduler } from "./scheduler.js";
 import { startCleanup } from "./cleanup.js";
+import { startMetrics } from "./metrics.js";
 import { recoverStuckVideos, queueLength } from "./processing.js";
 
 // Timestamped logs.
@@ -64,6 +65,7 @@ const server = app.listen(config.port, () => {
   if (recovered) console.log(`[startup] recovered ${recovered} interrupted video(s)`);
   startScheduler();
   startCleanup();
+  startMetrics();
 });
 
 // Finish in-flight requests, then close cleanly. Interrupted encodes are

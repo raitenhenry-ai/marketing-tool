@@ -19,7 +19,7 @@ export function authUrl(state) {
     client_id: config.instagram.clientId,
     redirect_uri: redirectUri(),
     response_type: "code",
-    scope: "instagram_business_basic,instagram_business_content_publish",
+    scope: "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights",
     state,
   });
   return `https://www.instagram.com/oauth/authorize?${params}`;
@@ -93,6 +93,33 @@ async function waitForContainer(containerId, accessToken) {
     await new Promise((r) => setTimeout(r, 5000));
   }
   throw new Error("Instagram media container timed out");
+}
+
+// Returns a map of mediaId -> {views, likes, comments, shares, saves}.
+// Insights are fetched per media; failures on individual posts are skipped.
+export async function fetchStats(account, mediaIds) {
+  const stats = {};
+  for (const id of mediaIds) {
+    for (const metricSet of ["views,likes,comments,shares,saved", "plays,likes,comments,shares,saved"]) {
+      const res = await fetch(
+        `${GRAPH}/${id}/insights?metric=${metricSet}&access_token=${account.access_token}`
+      );
+      const data = await res.json();
+      if (!res.ok) continue; // older accounts/media may only support "plays"
+      const byName = Object.fromEntries(
+        (data.data || []).map((m) => [m.name, Number(m.values?.[0]?.value || 0)])
+      );
+      stats[id] = {
+        views: byName.views ?? byName.plays ?? 0,
+        likes: byName.likes ?? 0,
+        comments: byName.comments ?? 0,
+        shares: byName.shares ?? 0,
+        saves: byName.saved ?? 0,
+      };
+      break;
+    }
+  }
+  return stats;
 }
 
 export async function uploadClip(account, { publicUrl, caption }) {

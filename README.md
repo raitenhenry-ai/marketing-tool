@@ -116,6 +116,18 @@ Transcription/AI-metadata calls all run in parallel before encoding starts, so
 they add almost nothing to total wall time. 60 fps sources are capped to 30 fps
 (halves encode time, no visible difference in feeds).
 
+## Analytics
+
+Views, likes, comments, shares and saves are pulled for every published post —
+per video and per account — every 6 hours (or on demand with the **Refresh
+metrics** button on the Analytics page). Sources: YouTube Data API statistics,
+Instagram media insights, TikTok video queries.
+
+Note: metrics need extra OAuth scopes (`instagram_business_manage_insights`,
+TikTok `video.list`). Accounts connected before this feature must be
+**reconnected once** from the Accounts page to grant them; YouTube accounts
+are unaffected.
+
 ## How scheduling works
 
 - When processing finishes, each clip gets a `scheduled_at` timestamp: part 1 = now, part N = now + (N−1) × 3h.

@@ -87,6 +87,28 @@ export async function refresh(account) {
   };
 }
 
+// Returns a map of videoId -> {views, likes, comments} for up to 50 ids/call.
+export async function fetchStats(account, videoIds) {
+  const stats = {};
+  for (let i = 0; i < videoIds.length; i += 50) {
+    const chunk = videoIds.slice(i, i + 50);
+    const res = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${chunk.join(",")}&maxResults=50`,
+      { headers: { Authorization: `Bearer ${account.access_token}` } }
+    );
+    const data = await res.json();
+    if (!res.ok) throw new Error(`YouTube stats failed (${res.status}): ${JSON.stringify(data)}`);
+    for (const item of data.items || []) {
+      stats[item.id] = {
+        views: Number(item.statistics?.viewCount || 0),
+        likes: Number(item.statistics?.likeCount || 0),
+        comments: Number(item.statistics?.commentCount || 0),
+      };
+    }
+  }
+  return stats;
+}
+
 export async function uploadClip(account, { filePath, title, description }) {
   const size = fs.statSync(filePath).size;
   const initRes = await fetch(UPLOAD_URL, {

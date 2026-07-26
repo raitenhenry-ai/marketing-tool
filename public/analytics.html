@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Analytics · ShortForm Manager</title>
+  <script>document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";</script>
+  <link rel="stylesheet" href="/assets/base.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside id="sidebar"></aside>
+    <div class="main">
+      <header id="topbar"></header>
+      <main class="content page-fade">
+
+        <div class="grid grid-4 mb-24" id="metric-tiles">
+          <div class="stat"><div class="skeleton" style="height:52px"></div></div>
+          <div class="stat"><div class="skeleton" style="height:52px"></div></div>
+          <div class="stat"><div class="skeleton" style="height:52px"></div></div>
+          <div class="stat"><div class="skeleton" style="height:52px"></div></div>
+        </div>
+
+        <div class="card mb-16">
+          <div class="card-title">Per account <span class="hint" id="acc-hint"></span></div>
+          <div class="table-wrap" style="border:0">
+            <table class="table">
+              <thead><tr>
+                <th>Account</th><th>Posts</th><th>Views</th><th>Likes</th>
+                <th>Comments</th><th>Shares</th>
+              </tr></thead>
+              <tbody id="account-rows"></tbody>
+            </table>
+          </div>
+          <div id="account-empty"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Per video</div>
+          <div class="table-wrap" style="border:0">
+            <table class="table">
+              <thead><tr>
+                <th>Video</th><th>Posts</th><th>Views</th><th>Likes</th>
+                <th>Comments</th><th>Shares</th>
+              </tr></thead>
+              <tbody id="video-rows"></tbody>
+            </table>
+          </div>
+          <div id="video-empty"></div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+  <script type="module" src="/assets/analytics.js"></script>
+</body>
+</html>

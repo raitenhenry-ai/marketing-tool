@@ -16,7 +16,7 @@ export function authUrl(state) {
   const params = new URLSearchParams({
     client_key: config.tiktok.clientKey,
     response_type: "code",
-    scope: "user.info.basic,video.publish",
+    scope: "user.info.basic,video.publish,video.list",
     redirect_uri: redirectUri(),
     state,
   });
@@ -78,6 +78,56 @@ export async function refresh(account) {
     refreshToken: data.refresh_token || account.refresh_token,
     expiresAt: Date.now() + (data.expires_in || 86400) * 1000,
   };
+}
+
+// The publish flow returns an internal publish_id; the public video id only
+// exists once TikTok finishes processing. Returns the public id or null.
+export async function resolvePostId(account, publishId) {
+  const res = await fetch("https://open.tiktokapis.com/v2/post/publish/status/fetch/", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${account.access_token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ publish_id: publishId }),
+  });
+  const data = await res.json();
+  if (!res.ok || data.error?.code !== "ok") return null;
+  return data.data?.publicaly_available_post_id?.[0]
+    ? String(data.data.publicaly_available_post_id[0])
+    : null;
+}
+
+// Returns a map of videoId -> {views, likes, comments, shares} (<=20 ids/call).
+export async function fetchStats(account, videoIds) {
+  const stats = {};
+  for (let i = 0; i < videoIds.length; i += 20) {
+    const chunk = videoIds.slice(i, i + 20);
+    const res = await fetch(
+      "https://open.tiktokapis.com/v2/video/query/?fields=id,view_count,like_count,comment_count,share_count",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${account.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ filters: { video_ids: chunk } }),
+      }
+    );
+    const data = await res.json();
+    if (!res.ok || data.error?.code !== "ok") {
+      throw new Error(`TikTok stats failed: ${JSON.stringify(data.error || data)}`);
+    }
+    for (const v of data.data?.videos || []) {
+      stats[String(v.id)] = {
+        views: Number(v.view_count || 0),
+        likes: Number(v.like_count || 0),
+        comments: Number(v.comment_count || 0),
+        shares: Number(v.share_count || 0),
+      };
+    }
+  }
+  return stats;
 }
 
 export async function uploadClip(account, { filePath, title }) {

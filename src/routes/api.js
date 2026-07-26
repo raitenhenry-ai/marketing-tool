@@ -11,6 +11,7 @@ import { metadataEnabled } from "../metadata.js";
 import { parseCuts } from "../cuts.js";
 import { deleteVideoFiles } from "../cleanup.js";
 import { authEnabled } from "../auth.js";
+import { refreshMetrics, metricsStatus } from "../metrics.js";
 import * as youtube from "../platforms/youtube.js";
 import * as instagram from "../platforms/instagram.js";
 import * as tiktok from "../platforms/tiktok.js";
@@ -200,6 +201,8 @@ router.get("/videos/:id", (req, res) => {
         platformVideoId: u.platform_video_id,
         uploadedAt: u.uploaded_at,
         nextAttemptAt: u.next_attempt_at,
+        metrics: u.metrics_json ? JSON.parse(u.metrics_json) : null,
+        metricsAt: u.metrics_at,
       })),
     })),
   });
@@ -228,8 +231,13 @@ router.get("/stats", (req, res) => {
      ORDER BY COALESCE(uploads.uploaded_at, 0) DESC, uploads.id DESC LIMIT 8`
   ).all();
 
+  const totalViews = db.prepare(
+    "SELECT metrics_json FROM uploads WHERE status = 'done' AND metrics_json IS NOT NULL"
+  ).all().reduce((sum, r) => sum + Number(JSON.parse(r.metrics_json).views || 0), 0);
+
   res.json({
     totals: {
+      totalViews,
       videos: count("SELECT COUNT(*) AS n FROM videos"),
       clips: count("SELECT COUNT(*) AS n FROM clips"),
       published: count("SELECT COUNT(*) AS n FROM uploads WHERE status = 'done'"),
@@ -283,6 +291,83 @@ router.get("/schedule", (req, res) => {
   ).all();
 
   res.json({ upcoming, history });
+});
+
+const EMPTY = { views: 0, likes: 0, comments: 0, shares: 0, saves: 0 };
+const addInto = (target, m) => {
+  for (const key of Object.keys(EMPTY)) target[key] += Number(m?.[key] || 0);
+};
+
+router.get("/analytics", (req, res) => {
+  const rows = db.prepare(
+    `SELECT uploads.id, uploads.platform, uploads.metrics_json, uploads.metrics_at,
+            uploads.uploaded_at, uploads.platform_video_id, uploads.public_post_id,
+            accounts.id AS account_id, accounts.display_name AS account_name,
+            clips.part_number, clips.total_parts, clips.gen_title,
+            videos.id AS video_id, videos.title AS video_title
+     FROM uploads
+     JOIN accounts ON accounts.id = uploads.account_id
+     JOIN clips ON clips.id = uploads.clip_id
+     JOIN videos ON videos.id = clips.video_id
+     WHERE uploads.status = 'done'
+     ORDER BY uploads.uploaded_at DESC`
+  ).all();
+
+  const totals = { ...EMPTY, posts: rows.length, withMetrics: 0 };
+  const accounts = new Map();
+  const videos = new Map();
+  let lastFetched = null;
+
+  for (const row of rows) {
+    const metrics = row.metrics_json ? JSON.parse(row.metrics_json) : null;
+    if (metrics) {
+      totals.withMetrics++;
+      addInto(totals, metrics);
+      lastFetched = Math.max(lastFetched || 0, row.metrics_at || 0);
+    }
+
+    if (!accounts.has(row.account_id)) {
+      accounts.set(row.account_id, {
+        accountId: row.account_id, platform: row.platform,
+        accountName: row.account_name, posts: 0, ...EMPTY,
+      });
+    }
+    const acc = accounts.get(row.account_id);
+    acc.posts++;
+    addInto(acc, metrics);
+
+    if (!videos.has(row.video_id)) {
+      videos.set(row.video_id, {
+        videoId: row.video_id, title: row.video_title, posts: 0, ...EMPTY, uploads: [],
+      });
+    }
+    const vid = videos.get(row.video_id);
+    vid.posts++;
+    addInto(vid, metrics);
+    vid.uploads.push({
+      platform: row.platform,
+      accountName: row.account_name,
+      part: row.part_number,
+      totalParts: row.total_parts,
+      genTitle: row.gen_title,
+      uploadedAt: row.uploaded_at,
+      metrics,
+    });
+  }
+
+  res.json({
+    totals,
+    lastFetched,
+    status: metricsStatus(),
+    accounts: [...accounts.values()].sort((a, b) => b.views - a.views),
+    videos: [...videos.values()].sort((a, b) => b.views - a.views),
+  });
+});
+
+router.post("/metrics/refresh", (req, res) => {
+  // Fire and forget; the analytics endpoint reflects progress.
+  refreshMetrics().catch((err) => console.error("[metrics] manual refresh:", err));
+  res.json({ ok: true });
 });
 
 router.get("/settings", (req, res) => {
