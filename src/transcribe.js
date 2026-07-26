@@ -54,10 +54,18 @@ export function escapeAssText(text) {
 
 // Group words into short caption chunks (max 3 words, broken on pauses), then
 // emit one dialogue event per word so only the word being spoken is highlighted.
+//
+// Smoothness rules: within a chunk each word-event lasts exactly until the
+// next word begins, and a chunk stays on screen until the next chunk starts
+// whenever the pause between them is short - so during continuous speech the
+// captions never blink off. Only a real pause (> BRIDGE_MAX) clears the
+// screen, and the next chunk then fades in softly.
 export function buildAss(words, { width, height }) {
   const MAX_WORDS = 3;
   const MAX_GAP = 0.8;
   const MAX_CHUNK_SECONDS = 3.0;
+  const BRIDGE_MAX = 0.8;   // bridge inter-chunk pauses shorter than this
+  const LINGER = 0.35;      // how long the last words linger before a real pause
 
   const chunks = [];
   let current = [];
@@ -86,18 +94,31 @@ export function buildAss(words, { width, height }) {
   const BASE = "&HFFFFFF&";
 
   const events = [];
-  for (const chunk of chunks) {
+  for (let ci = 0; ci < chunks.length; ci++) {
+    const chunk = chunks[ci];
+    const nextChunkStart = chunks[ci + 1]?.[0].start ?? null;
+    const lastWord = chunk[chunk.length - 1];
+    // Hold the finished chunk on screen until the next one takes over, unless
+    // the speaker actually pauses.
+    const bridged = nextChunkStart != null && nextChunkStart - lastWord.end <= BRIDGE_MAX;
+    const chunkEnd = bridged ? nextChunkStart : lastWord.end + LINGER;
+    // Fade in only when the captions were off screen just before this chunk.
+    const prevChunk = chunks[ci - 1];
+    const freshAppearance =
+      !prevChunk || chunk[0].start - prevChunk[prevChunk.length - 1].end > BRIDGE_MAX;
+
     for (let i = 0; i < chunk.length; i++) {
       const start = chunk[i].start;
-      const end = i + 1 < chunk.length ? chunk[i + 1].start : chunk[i].end + 0.15;
+      const end = i + 1 < chunk.length ? chunk[i + 1].start : chunkEnd;
       if (end <= start) continue;
+      const fade = i === 0 && freshAppearance ? "{\\fad(70,0)}" : "";
       const text = chunk
         .map((w, j) => {
           const word = escapeAssText(w.word.toUpperCase());
           return j === i ? `{\\c${HIGHLIGHT}}${word}{\\c${BASE}}` : word;
         })
         .join(" ");
-      events.push(`Dialogue: 0,${assTime(start)},${assTime(end)},Caps,,0,0,0,,${text}`);
+      events.push(`Dialogue: 0,${assTime(start)},${assTime(end)},Caps,,0,0,0,,${fade}${text}`);
     }
   }
 
