@@ -62,6 +62,9 @@ export function escapeAssText(text) {
 // screen, and the next chunk then fades in softly.
 export function buildAss(words, { width, height }) {
   const MAX_WORDS = 3;
+  // Keeps every caption on a single line at our font size, so the text never
+  // wraps to two lines and never jumps vertically between groups.
+  const MAX_CHARS = 18;
   const MAX_GAP = 0.8;
   const MAX_CHUNK_SECONDS = 3.0;
   const BRIDGE_MAX = 0.8;   // bridge inter-chunk pauses shorter than this
@@ -69,16 +72,20 @@ export function buildAss(words, { width, height }) {
 
   const chunks = [];
   let current = [];
+  let currentChars = 0;
   for (const w of words) {
     const prev = current[current.length - 1];
     const tooLong =
       current.length >= MAX_WORDS ||
+      (current.length > 0 && currentChars + 1 + w.word.length > MAX_CHARS) ||
       (prev && w.start - prev.end > MAX_GAP) ||
       (current.length && w.end - current[0].start > MAX_CHUNK_SECONDS);
     if (tooLong && current.length) {
       chunks.push(current);
       current = [];
+      currentChars = 0;
     }
+    currentChars += (current.length ? 1 : 0) + w.word.length;
     current.push(w);
   }
   if (current.length) chunks.push(current);
@@ -127,7 +134,7 @@ ScriptType: v4.00+
 PlayResX: ${width}
 PlayResY: ${height}
 ScaledBorderAndShadow: yes
-WrapStyle: 0
+WrapStyle: 2
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
