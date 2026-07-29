@@ -110,14 +110,32 @@ async function publish(accountRow, clip, video) {
     const filePath = path.join(config.clipsDir, clip.filename);
     const publicUrl = `${config.baseUrl}/clips/${encodeURIComponent(clip.filename)}`;
     const { title, caption } = textsFor(video, clip);
+    const ctx = { filePath, publicUrl, title, caption, description: caption };
 
-    const platformVideoId = await platforms[account.platform].uploadClip(account, {
-      filePath,
-      publicUrl,
-      title,
-      caption,
-      description: caption,
-    });
+    let platformVideoId;
+    try {
+      platformVideoId = await platforms[account.platform].uploadClip(account, ctx);
+    } catch (err) {
+      // Tokens can be invalidated before their recorded expiry (revoked, or a
+      // Google app in "Testing" mode). On an auth error, force-refresh the
+      // token and retry once before giving up.
+      const unauthorized = /\(401\)|unauthorized|invalid.?token|token.*expired/i
+        .test(String(err.message || err));
+      const canRefresh =
+        unauthorized && (account.refresh_token || account.platform === "instagram");
+      if (!canRefresh) throw err;
+
+      const updated = await platforms[account.platform].refresh(account);
+      await run(
+        "UPDATE accounts SET access_token = ?, refresh_token = ?, expires_at = ? WHERE id = ?",
+        [updated.accessToken, updated.refreshToken ?? account.refresh_token, updated.expiresAt, account.id]
+      );
+      const freshed = await q1("SELECT * FROM accounts WHERE id = ?", [account.id]);
+      console.log(
+        `[scheduler] ${account.platform}/${account.display_name}: token rejected, refreshed and retrying`
+      );
+      platformVideoId = await platforms[freshed.platform].uploadClip(freshed, ctx);
+    }
 
     await run(
       `UPDATE uploads SET status = 'done', platform_video_id = ?, error = NULL, uploaded_at = ?
