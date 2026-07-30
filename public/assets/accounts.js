@@ -98,8 +98,8 @@ function platformCard(key, info, max) {
 
   const action = !info.configured
     ? `<div class="callout">${icons.alert}<span>
-         API credentials for ${PLATFORMS[key]} are not set. Add them to <code>.env</code>
-         (see <code>.env.example</code>) and restart, then connect accounts here.
+         API credentials for ${PLATFORMS[key]} are not set.
+         <a href="settings.html#guide-${key}">Open the step-by-step setup guide →</a>
        </span></div>`
     : n >= max
       ? `<span class="muted" style="font-size:13px">Account limit reached (${n}/${max})</span>`

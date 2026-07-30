@@ -1,4 +1,5 @@
-import { $, api, initShell, icons, esc, toast, fmtDuration, PLATFORMS } from "./common.js";
+import { $, $$, api, initShell, icons, esc, toast, fmtDuration, PLATFORMS } from "./common.js";
+import { buildGuides } from "./guides.js";
 
 initShell({ title: "Settings" });
 
@@ -32,6 +33,9 @@ async function load() {
   try {
     s = await api("/api/settings");
   } catch { return; }
+
+  // Refreshes re-render everything; remember which guides the user has open.
+  const openGuides = $$("details.guide[open]").map((d) => d.id);
 
   $("#settings-host").innerHTML = [
     kvSection("Clips & branding", [
@@ -68,6 +72,8 @@ async function load() {
       Object.entries(s.server.redirectUris).map(([p, uri]) => [PLATFORMS[p] || p, copyable(uri)]),
       "register these in each platform's developer console"),
 
+    buildGuides(s),
+
     kvSection("Disk cleanup", [
       ["Delete originals after", s.cleanup.deleteOriginalsAfterDays > 0
         ? `${s.cleanup.deleteOriginalsAfterDays} days <span class="muted">clips are kept; originals are only needed for re-processing</span>`
@@ -86,7 +92,23 @@ async function load() {
       ["Node.js", `<code>${esc(s.server.nodeVersion)}</code>`],
     ], "BASE_URL · ADMIN_PASSWORD"),
   ].join("");
+
+  for (const id of openGuides) $(`#${id}`)?.setAttribute("open", "");
+  openHashGuide();
 }
+
+// Deep links like settings.html#guide-tiktok (from the Accounts page) open
+// that platform's guide and scroll to it.
+let hashHandled = false;
+function openHashGuide() {
+  if (hashHandled || !location.hash.startsWith("#guide-")) return;
+  const guide = $(location.hash);
+  if (!guide) return;
+  hashHandled = true;
+  guide.setAttribute("open", "");
+  guide.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+window.addEventListener("hashchange", () => { hashHandled = false; openHashGuide(); });
 
 load();
 setInterval(load, 15000);
