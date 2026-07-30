@@ -94,7 +94,9 @@ export function buildAss(words, { width, height }) {
   const fontSize = Math.round(height * 0.042);
   const outline = Math.max(2, Math.round(height * 0.0032));
   const shadow = Math.max(1, Math.round(height * 0.0016));
-  const marginV = Math.round(height * 0.125); // sits above the site-domain bar
+  // Just below mid-screen: above the site-domain badge and well clear of the
+  // caption/buttons UI the platforms draw over the bottom quarter.
+  const marginV = Math.round(height * 0.335);
   const marginX = Math.round(width * 0.055);
 
   const HIGHLIGHT = "&H00FFFF&"; // yellow (ASS colours are BGR)

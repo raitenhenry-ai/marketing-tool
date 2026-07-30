@@ -18,8 +18,12 @@ export function buildOverlayAss({ partLabel, siteDomain, width, height, duration
   const partBord = Math.round(partSize * 0.42);
   const domainSize = Math.round(height * 0.028);
   const domainBord = Math.round(domainSize * 0.42);
-  const topMargin = Math.round(height * 0.06);
-  const bottomMargin = Math.round(height * 0.055);
+  // Keep overlays inside the platform "safe zone": Shorts/Reels/TikTok draw
+  // their own UI over the top ~8% (tabs) and bottom ~22-25% (caption, music,
+  // progress bar), so the badge sits below the top bar and the domain sits
+  // above the bottom UI band.
+  const topMargin = Math.round(height * 0.09);
+  const bottomMargin = Math.round(height * 0.26);
 
   const events = [];
   if (partLabel) {
