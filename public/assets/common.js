@@ -9,6 +9,9 @@ export const PLATFORMS = {
   tiktok: "TikTok",
   facebook: "Facebook",
   x: "X",
+  threads: "Threads",
+  pinterest: "Pinterest",
+  linkedin: "LinkedIn",
 };
 
 /* ---------- Icons (inline SVG, stroke-based) ---------- */
@@ -46,6 +49,9 @@ export const icons = {
   tiktok: stroke('<path d="M9 12a4 4 0 1 0 4 4V4c.7 2.3 2.7 4.6 6 5"/>'),
   facebook: stroke('<path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>'),
   x: stroke('<path d="M4 4l16 16M20 4L4 20"/>'),
+  threads: stroke('<path d="M12 22c-5 0-8-3.5-8-10S7 2 12 2c4.3 0 7 2.4 7.7 6"/><path d="M12 13.5c2.5-1 6-.5 6 2.5s-3 4-5 3.5-3-2.5-2-4.5 4.5-3 6-1"/>'),
+  pinterest: stroke('<circle cx="12" cy="12" r="10"/><path d="M9 21c1-3 1.5-5.5 2-8m.5-3.5C11 7 13 6 14.5 7.5s1 4.5-1 5.5-3.5-.5-3-2.5"/>'),
+  linkedin: stroke('<rect x="2" y="2" width="20" height="20" rx="3"/><line x1="7" y1="10" x2="7" y2="17"/><circle cx="7" cy="7" r="0.5"/><path d="M11 17v-4a2.5 2.5 0 0 1 5 0v4M11 10v7"/>'),
 };
 
 /* ---------- Formatters ---------- */

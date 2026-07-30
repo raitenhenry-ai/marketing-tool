@@ -8,8 +8,11 @@ import * as instagram from "../platforms/instagram.js";
 import * as tiktok from "../platforms/tiktok.js";
 import * as facebook from "../platforms/facebook.js";
 import * as x from "../platforms/x.js";
+import * as threads from "../platforms/threads.js";
+import * as pinterest from "../platforms/pinterest.js";
+import * as linkedin from "../platforms/linkedin.js";
 
-const platforms = { youtube, instagram, tiktok, facebook, x };
+const platforms = { youtube, instagram, tiktok, facebook, x, threads, pinterest, linkedin };
 const router = Router();
 
 router.get("/:platform", async (req, res) => {

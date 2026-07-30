@@ -1,6 +1,6 @@
 # Short-Form Content Manager
 
-Turn one long-form video into a scheduled series of short clips, published automatically to **YouTube (Shorts)**, **Instagram (Reels)**, **TikTok**, **Facebook (Page Reels)** and **X**.
+Turn one long-form video into a scheduled series of short clips, published automatically to **YouTube (Shorts)**, **Instagram (Reels)**, **TikTok**, **Facebook (Page Reels)**, **X**, **Threads**, **Pinterest (video Pins)** and **LinkedIn**.
 
 How it works:
 
@@ -80,6 +80,24 @@ The server's **public URL** (`BASE_URL` in `.env`) must be registered as the OAu
 2. Add redirect URI `{BASE_URL}/auth/x/callback`.
 3. Put the OAuth 2 client ID/secret in `.env` (`X_CLIENT_ID`, `X_CLIENT_SECRET`).
 4. Clips publish as video posts; captions are trimmed to X's 280-character limit. The free API tier allows a limited number of posts per day.
+
+**Threads**
+1. In a Meta developer app, add the **Threads API** use case (Threads has its own app credentials, like Instagram's).
+2. Add redirect URI `{BASE_URL}/auth/threads/callback` and request scopes `threads_basic`, `threads_content_publish`, `threads_manage_insights`.
+3. Put the Threads app ID/secret in `.env` (`THREADS_APP_ID`, `THREADS_APP_SECRET`).
+4. In Development mode, add the Threads account as a tester and accept the invite (Threads app → Settings → Website permissions). Captions are trimmed to Threads' 500-character limit; clips are ingested from `{BASE_URL}/clips/...` so the server must be public.
+
+**Pinterest**
+1. Create an app at [developers.pinterest.com](https://developers.pinterest.com) (trial access is instant; standard access via a short request form).
+2. Add redirect URI `{BASE_URL}/auth/pinterest/callback`.
+3. Put the app ID/secret in `.env` (`PINTEREST_APP_ID`, `PINTEREST_APP_SECRET`).
+4. Clips publish as **video Pins** to your first board (or an auto-created "Short Clips" board), linking back to `SITE_DOMAIN`. Analytics need a business account.
+
+**LinkedIn**
+1. Create an app at [developer.linkedin.com](https://developer.linkedin.com) (requires an associated LinkedIn Page) and add the **Share on LinkedIn** and **Sign In with LinkedIn using OpenID Connect** products.
+2. Add redirect URI `{BASE_URL}/auth/linkedin/callback`.
+3. Put the client ID/secret in `.env` (`LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET`).
+4. Clips publish as video posts on the connected member's feed. Standard apps don't get refresh tokens, so LinkedIn connections need a re-connect roughly every 60 days; post analytics for personal posts aren't exposed by LinkedIn's API.
 
 ## Configuration
 

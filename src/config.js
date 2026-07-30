@@ -93,6 +93,18 @@ const config = {
     clientId: env("X_CLIENT_ID"),
     clientSecret: env("X_CLIENT_SECRET"),
   },
+  threads: {
+    appId: env("THREADS_APP_ID"),
+    appSecret: env("THREADS_APP_SECRET"),
+  },
+  pinterest: {
+    appId: env("PINTEREST_APP_ID"),
+    appSecret: env("PINTEREST_APP_SECRET"),
+  },
+  linkedin: {
+    clientId: env("LINKEDIN_CLIENT_ID"),
+    clientSecret: env("LINKEDIN_CLIENT_SECRET"),
+  },
 };
 
 try {

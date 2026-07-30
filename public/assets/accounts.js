@@ -10,6 +10,9 @@ const DESCRIPTIONS = {
   tiktok: "Clips publish via the Content Posting API.",
   facebook: "Clips publish as Reels on your Facebook Pages — connecting adds every Page you manage.",
   x: "Clips publish as video posts via the X API.",
+  threads: "Clips publish as video posts via the Threads API.",
+  pinterest: "Clips publish as video Pins (to your first board, or an auto-created 'Short Clips' board).",
+  linkedin: "Clips publish as video posts on your personal LinkedIn feed.",
 };
 
 // Surface OAuth results passed back through the URL after a connect redirect.

@@ -35,6 +35,9 @@
   --tt: #43d3d3;
   --fb: #5b8def;
   --xc: #9aa3b2;
+  --th: #c8a2e8;
+  --pin: #e05c6e;
+  --li: #5a9bd8;
 
   --radius: 10px;
   --radius-lg: 14px;
@@ -328,6 +331,9 @@ textarea.input { resize: vertical; min-height: 74px; font-family: var(--mono); f
 .chip .pdot.tiktok { background: var(--tt); }
 .chip .pdot.facebook { background: var(--fb); }
 .chip .pdot.x { background: var(--xc); }
+.chip .pdot.threads { background: var(--th); }
+.chip .pdot.pinterest { background: var(--pin); }
+.chip .pdot.linkedin { background: var(--li); }
 
 .hashtag {
   display: inline-block; font-size: 12px; color: var(--accent-hover);
@@ -529,6 +535,12 @@ table.table { width: 100%; border-collapse: collapse; background: var(--surface)
 .platform-logo.facebook svg { color: var(--fb); }
 .platform-logo.x { background: rgba(154, 163, 178, 0.16); }
 .platform-logo.x svg { color: var(--xc); }
+.platform-logo.threads { background: rgba(200, 162, 232, 0.16); }
+.platform-logo.threads svg { color: var(--th); }
+.platform-logo.pinterest { background: rgba(224, 92, 110, 0.14); }
+.platform-logo.pinterest svg { color: var(--pin); }
+.platform-logo.linkedin { background: rgba(90, 155, 216, 0.16); }
+.platform-logo.linkedin svg { color: var(--li); }
 .platform-name { font-weight: 700; font-size: 15px; }
 .platform-sub { font-size: 12.5px; color: var(--muted); }
 .platform-head .spacer { flex: 1; }
