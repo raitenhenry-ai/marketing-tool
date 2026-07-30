@@ -53,6 +53,10 @@ app.use("/clips", express.static(config.clipsDir));
 
 // Public legal pages (also the policy URLs platform app reviews ask for).
 const publicDir = path.join(config.rootDir, "public");
+
+// Domain-verification files (TikTok etc.) must be publicly reachable at the
+// site root: drop them in public/verification/ and they're served from /.
+app.use(express.static(path.join(publicDir, "verification")));
 app.get(["/terms", "/terms/"], (req, res) => res.sendFile(path.join(publicDir, "terms.html")));
 app.get(["/privacy", "/privacy/"], (req, res) => res.sendFile(path.join(publicDir, "privacy.html")));
 
