@@ -1,11 +1,11 @@
 import {
   $, $$, api, initShell, icons, esc, toast, confirmDialog,
   statusBadge, fmtDateTime, relTime, skeletonRows, PLATFORMS,
-} from "/assets/common.js";
+} from "./common.js";
 
 initShell({
   title: "Videos",
-  actions: `<a class="btn" href="/upload.html">${icons.upload} Upload video</a>`,
+  actions: `<a class="btn" href="upload.html">${icons.upload} Upload video</a>`,
 });
 
 let videos = [];
@@ -84,7 +84,7 @@ function renderRows() {
       ${icons.videos}
       <h3>${videos.length ? "No videos match" : "No videos yet"}</h3>
       <p>${videos.length ? "Try a different filter or search." : "Upload a long-form video to get a scheduled series of clips."}</p>
-      ${videos.length ? "" : `<a class="btn" href="/upload.html">Upload a video</a>`}
+      ${videos.length ? "" : `<a class="btn" href="upload.html">Upload a video</a>`}
     </div></div>`;
     return;
   }
@@ -105,7 +105,7 @@ function renderRows() {
         : v.status === "ready" ? `<span class="muted">all sent</span>` : `<span class="muted">—</span>`;
     return `<tr>
       <td>
-        <div class="row-title"><a href="/video.html?id=${v.id}">${esc(v.title)}</a></div>
+        <div class="row-title"><a href="video.html?id=${v.id}">${esc(v.title)}</a></div>
         <div class="row-sub">${fmtDateTime(v.createdAt)}${v.error ? ` · <span style="color:var(--danger)">${esc(v.error)}</span>` : ""}</div>
       </td>
       <td>${statusBadge(v.status)}</td>

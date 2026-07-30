@@ -51,10 +51,23 @@ app.get("/healthz", async (req, res) => {
 });
 app.use("/clips", express.static(config.clipsDir));
 
-// Everything else sits behind the login when ADMIN_PASSWORD is set.
+// Public legal pages (also the policy URLs platform app reviews ask for).
+const publicDir = path.join(config.rootDir, "public");
+app.get(["/terms", "/terms/"], (req, res) => res.sendFile(path.join(publicDir, "terms.html")));
+app.get(["/privacy", "/privacy/"], (req, res) => res.sendFile(path.join(publicDir, "privacy.html")));
+
+// The root URL is intentionally left free (reserved for a future site).
+app.get("/", (req, res) => {
+  res.send(`<!doctype html><html><head><meta charset="utf-8"><title>clint.build</title>
+<style>body{font-family:-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#0a0d13;color:#6d7688}</style>
+</head><body><p>coming soon · <a href="/terms" style="color:#3b76f0">terms</a> · <a href="/privacy" style="color:#3b76f0">privacy</a></p></body></html>`);
+});
+
+// The dashboard lives under /343k; everything below sits behind the login
+// when ADMIN_PASSWORD is set.
 registerAuthRoutes(app);
 app.use(authMiddleware);
-app.use(express.static(path.join(config.rootDir, "public")));
+app.use("/343k", express.static(publicDir));
 app.use("/auth", authRoutes);
 app.use("/api", apiRoutes);
 

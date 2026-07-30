@@ -193,19 +193,19 @@ export function confirmDialog({ title, message, confirmText = "Delete", danger =
 
 const NAV = [
   { section: "Content" },
-  { href: "/", icon: "dashboard", label: "Dashboard" },
-  { href: "/upload.html", icon: "upload", label: "Upload" },
-  { href: "/videos.html", icon: "videos", label: "Videos", badge: "videos" },
-  { href: "/schedule.html", icon: "schedule", label: "Schedule", badge: "scheduled" },
-  { href: "/analytics.html", icon: "chart", label: "Analytics" },
+  { href: "index.html", icon: "dashboard", label: "Dashboard" },
+  { href: "upload.html", icon: "upload", label: "Upload" },
+  { href: "videos.html", icon: "videos", label: "Videos", badge: "videos" },
+  { href: "schedule.html", icon: "schedule", label: "Schedule", badge: "scheduled" },
+  { href: "analytics.html", icon: "chart", label: "Analytics" },
   { section: "Setup" },
-  { href: "/accounts.html", icon: "accounts", label: "Accounts", badge: "accounts" },
-  { href: "/settings.html", icon: "settings", label: "Settings" },
+  { href: "accounts.html", icon: "accounts", label: "Accounts", badge: "accounts" },
+  { href: "settings.html", icon: "settings", label: "Settings" },
 ];
 
 export function initShell({ title, crumb = null, actions = "" }) {
-  const path = location.pathname === "/" || location.pathname === "/index.html"
-    ? "/" : location.pathname;
+  // Pages are served under a base path (/343k/), so match by filename.
+  const path = location.pathname.split("/").pop() || "index.html";
 
   const sidebar = $("#sidebar");
   sidebar.className = "sidebar";

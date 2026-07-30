@@ -1,4 +1,4 @@
-import { $, api, initShell, icons, esc, toast, fmtDuration, PLATFORMS } from "/assets/common.js";
+import { $, api, initShell, icons, esc, toast, fmtDuration, PLATFORMS } from "./common.js";
 
 initShell({ title: "Settings" });
 

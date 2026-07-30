@@ -1,10 +1,10 @@
 import {
   $, api, initShell, icons, esc, fmtDateTime, relTime, uploadChip, fmtCompact, PLATFORMS,
-} from "/assets/common.js";
+} from "./common.js";
 
 initShell({
   title: "Dashboard",
-  actions: `<a class="btn" href="/upload.html">${icons.upload} Upload video</a>`,
+  actions: `<a class="btn" href="upload.html">${icons.upload} Upload video</a>`,
 });
 
 function statTile({ icon, label, value, sub, subClass = "" }) {
@@ -41,7 +41,7 @@ async function render() {
       sub: t.failedUploads
         ? `${t.failedUploads} gave up after retries`
         : t.totalViews
-          ? `<a href="/analytics.html">${fmtCompact(t.totalViews)} total views</a>`
+          ? `<a href="analytics.html">${fmtCompact(t.totalViews)} total views</a>`
           : "no failed uploads",
       subClass: t.failedUploads ? "bad" : t.totalViews ? "" : "good",
     }),
@@ -64,20 +64,20 @@ async function render() {
         <div class="tl-item">
           <span class="tl-time" title="${fmtDateTime(c.scheduled_at)}">${relTime(c.scheduled_at)}</span>
           <div class="tl-body">
-            <div class="tl-title"><a href="/video.html?id=${c.video_id}">${esc(c.gen_title || c.title)}</a></div>
+            <div class="tl-title"><a href="video.html?id=${c.video_id}">${esc(c.gen_title || c.title)}</a></div>
             <div class="tl-sub">Part ${c.part_number}/${c.total_parts} · ${fmtDateTime(c.scheduled_at)}</div>
           </div>
         </div>`).join("")
     : `<div class="empty">${icons.schedule}<h3>Nothing scheduled</h3>
        <p>Upload a long-form video and its parts will be scheduled automatically.</p>
-       <a class="btn" href="/upload.html">Upload a video</a></div>`;
+       <a class="btn" href="upload.html">Upload a video</a></div>`;
 
   const recent = stats.recentUploads;
   $("#recent-activity").innerHTML = recent.length
     ? recent.map((u) => `
         <div class="tl-item">
           <div class="tl-body">
-            <div class="tl-title"><a href="/video.html?id=${u.video_id}">${esc(u.title)}</a>
+            <div class="tl-title"><a href="video.html?id=${u.video_id}">${esc(u.title)}</a>
               <span class="muted">· Part ${u.part_number}/${u.total_parts}</span></div>
             <div class="tl-sub">${u.uploaded_at ? fmtDateTime(u.uploaded_at) : "in progress"}</div>
           </div>
@@ -93,7 +93,7 @@ async function render() {
       const state = !info.configured
         ? `<span class="on-off off">credentials missing</span>`
         : n === 0
-          ? `<a href="/accounts.html">connect →</a>`
+          ? `<a href="accounts.html">connect →</a>`
           : `<span class="on-off on">${n} connected</span>`;
       return `<span class="chip"><span class="pdot ${key}"></span>${PLATFORMS[key]} ${state}</span>`;
     }).join("");

@@ -1,6 +1,6 @@
 import {
   $, api, initShell, icons, esc, toast, fmtSize, fmtDateTime, fmtDuration,
-} from "/assets/common.js";
+} from "./common.js";
 
 initShell({ title: "Upload" });
 

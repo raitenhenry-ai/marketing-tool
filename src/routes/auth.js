@@ -25,7 +25,7 @@ router.get("/:platform", async (req, res) => {
   const count = Number((await q1("SELECT COUNT(*) AS n FROM accounts WHERE platform = ?", [name])).n);
   if (count >= config.maxAccountsPerPlatform) {
     return res.redirect(
-      `/accounts.html?connect_error=${encodeURIComponent(
+      `/343k/accounts.html?connect_error=${encodeURIComponent(
         `Limit of ${config.maxAccountsPerPlatform} ${name} accounts reached - disconnect one first`
       )}`
     );
@@ -49,11 +49,11 @@ router.get("/:platform/callback", async (req, res) => {
 
   const { code, state, error, error_description: errorDescription } = req.query;
   if (error) {
-    return res.redirect(`/accounts.html?connect_error=${encodeURIComponent(errorDescription || error)}`);
+    return res.redirect(`/343k/accounts.html?connect_error=${encodeURIComponent(errorDescription || error)}`);
   }
   const stateCheck = consumeState(state, name);
   if (!code || !stateCheck.ok) {
-    return res.redirect(`/accounts.html?connect_error=${encodeURIComponent("Invalid OAuth state, try again")}`);
+    return res.redirect(`/343k/accounts.html?connect_error=${encodeURIComponent("Invalid OAuth state, try again")}`);
   }
 
   try {
@@ -97,15 +97,15 @@ router.get("/:platform/callback", async (req, res) => {
 
     if (!added) {
       return res.redirect(
-        `/accounts.html?connect_error=${encodeURIComponent(
+        `/343k/accounts.html?connect_error=${encodeURIComponent(
           `Limit of ${config.maxAccountsPerPlatform} ${name} accounts reached - disconnect one first`
         )}`
       );
     }
-    res.redirect(`/accounts.html?connected=${name}`);
+    res.redirect(`/343k/accounts.html?connected=${name}`);
   } catch (err) {
     console.error(`[auth] ${name} callback failed:`, err);
-    res.redirect(`/accounts.html?connect_error=${encodeURIComponent(String(err.message || err))}`);
+    res.redirect(`/343k/accounts.html?connect_error=${encodeURIComponent(String(err.message || err))}`);
   }
 });
 

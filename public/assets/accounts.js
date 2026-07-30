@@ -1,6 +1,6 @@
 import {
   $, api, initShell, icons, esc, toast, confirmDialog, fmtDateTime, PLATFORMS,
-} from "/assets/common.js";
+} from "./common.js";
 
 initShell({ title: "Accounts" });
 
@@ -19,10 +19,10 @@ const DESCRIPTIONS = {
 const params = new URLSearchParams(location.search);
 if (params.get("connected")) {
   toast(`${PLATFORMS[params.get("connected")] || "Account"} connected`);
-  history.replaceState(null, "", "/accounts.html");
+  history.replaceState(null, "", "accounts.html");
 } else if (params.get("connect_error")) {
   toast(`Connection failed: ${params.get("connect_error")}`, "error");
-  history.replaceState(null, "", "/accounts.html");
+  history.replaceState(null, "", "accounts.html");
 }
 
 document.addEventListener("change", async (e) => {

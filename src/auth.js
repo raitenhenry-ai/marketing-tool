@@ -80,12 +80,12 @@ function loginPage(error) {
 
 export function registerAuthRoutes(app) {
   app.get("/login", (req, res) => {
-    if (!authEnabled() || isAuthed(req)) return res.redirect("/");
+    if (!authEnabled() || isAuthed(req)) return res.redirect("/343k/");
     res.send(loginPage(req.query.error));
   });
 
   app.post("/login", (req, res) => {
-    if (!authEnabled()) return res.redirect("/");
+    if (!authEnabled()) return res.redirect("/343k/");
 
     const ip = req.socket.remoteAddress || "unknown";
     const entry = attempts.get(ip);
@@ -106,7 +106,7 @@ export function registerAuthRoutes(app) {
       "Set-Cookie",
       `session=${token}; HttpOnly; Path=/; Max-Age=${SESSION_TTL_MS / 1000}; SameSite=Lax`
     );
-    res.redirect("/");
+    res.redirect("/343k/");
   });
 
   app.post("/logout", (req, res) => {

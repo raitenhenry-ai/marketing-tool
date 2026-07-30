@@ -46,8 +46,14 @@ URL in each platform's OAuth settings).
 ```bash
 npm install
 cp .env.example .env   # then fill it in
-npm start              # open http://localhost:3000
+npm start              # dashboard at http://localhost:3000/343k
 ```
+
+The dashboard lives at **`/343k`** (the root URL is left free for a separate
+site). Public pages: `/terms`, `/privacy` (use these as the policy URLs when
+platforms ask for them during app review), and `/healthz`. OAuth callbacks,
+the API and clip files stay at the root (`/auth/...`, `/api/...`, `/clips/...`),
+so redirect URIs registered with the platforms are unaffected.
 
 ### Getting API credentials
 

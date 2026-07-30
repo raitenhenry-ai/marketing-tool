@@ -1,7 +1,7 @@
 import {
   $, $$, api, initShell, icons, esc, fmtTime, fmtDay, fmtDateTime,
   uploadChip, PLATFORMS,
-} from "/assets/common.js";
+} from "./common.js";
 
 initShell({ title: "Schedule" });
 
@@ -39,7 +39,7 @@ function renderUpcoming() {
     return `<div class="card"><div class="empty">${icons.schedule}
       <h3>Nothing scheduled</h3>
       <p>Upload a video and its parts will appear here, spaced out automatically.</p>
-      <a class="btn" href="/upload.html">Upload a video</a></div></div>`;
+      <a class="btn" href="upload.html">Upload a video</a></div></div>`;
   }
 
   return groupByDay(upcoming, "scheduled_at").map(([day, items]) => `
@@ -49,7 +49,7 @@ function renderUpcoming() {
         <div class="tl-item">
           <span class="tl-time">${fmtTime(c.scheduled_at)}</span>
           <div class="tl-body">
-            <div class="tl-title"><a href="/video.html?id=${c.video_id}">${esc(c.gen_title || c.title)}</a></div>
+            <div class="tl-title"><a href="video.html?id=${c.video_id}">${esc(c.gen_title || c.title)}</a></div>
             <div class="tl-sub">${esc(c.title)} · Part ${c.part_number}/${c.total_parts}</div>
           </div>
           <div class="tl-side">
@@ -74,7 +74,7 @@ function renderHistory() {
         <div class="tl-item">
           <span class="tl-time">${u.uploaded_at ? fmtTime(u.uploaded_at) : "—"}</span>
           <div class="tl-body">
-            <div class="tl-title"><a href="/video.html?id=${u.video_id}">${esc(u.title)}</a>
+            <div class="tl-title"><a href="video.html?id=${u.video_id}">${esc(u.title)}</a>
               <span class="muted">· Part ${u.part_number}/${u.total_parts}</span></div>
             <div class="tl-sub">
               ${PLATFORMS[u.platform] || u.platform}${u.account_name ? ` · ${esc(u.account_name)}` : ""}

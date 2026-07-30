@@ -1,6 +1,6 @@
 import {
   $, api, initShell, icons, esc, toast, fmtCompact, fmtDateTime, relTime, PLATFORMS,
-} from "/assets/common.js";
+} from "./common.js";
 
 initShell({
   title: "Analytics",
@@ -76,7 +76,7 @@ async function load() {
   $("#video-rows").innerHTML = data.videos.map((v) => `
     <tr>
       <td>
-        <div class="row-title"><a href="/video.html?id=${v.videoId}">${esc(v.title)}</a></div>
+        <div class="row-title"><a href="video.html?id=${v.videoId}">${esc(v.title)}</a></div>
         <div class="row-sub">${v.uploads.length} post(s) across ${new Set(v.uploads.map((u) => u.accountName)).size} account(s)</div>
       </td>
       <td class="mono">${v.posts}</td>

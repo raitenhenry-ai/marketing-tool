@@ -1,13 +1,13 @@
 import {
   $, api, initShell, icons, esc, toast, confirmDialog, statusBadge,
   fmtDateTime, fmtDuration, relTime, uploadChip, fmtCompact, PLATFORMS,
-} from "/assets/common.js";
+} from "./common.js";
 
 const id = new URLSearchParams(location.search).get("id");
 
-initShell({ title: "Video", crumb: { href: "/videos.html", label: "Videos" } });
+initShell({ title: "Video", crumb: { href: "videos.html", label: "Videos" } });
 
-if (!id) location.href = "/videos.html";
+if (!id) location.href = "videos.html";
 
 document.addEventListener("click", async (e) => {
   if (e.target.closest("#retry-btn")) {
@@ -26,7 +26,7 @@ document.addEventListener("click", async (e) => {
     try {
       await api(`/api/videos/${id}`, { method: "DELETE" });
       toast("Video deleted");
-      location.href = "/videos.html";
+      location.href = "videos.html";
     } catch (err) { toast(err.message, "error"); }
   }
 });
@@ -85,7 +85,7 @@ async function load() {
     v = await api(`/api/videos/${id}`);
   } catch (err) {
     $("#video-head").innerHTML = `<div class="empty">${icons.alert}<h3>Video not found</h3>
-      <p>It may have been deleted.</p><a class="btn btn-secondary" href="/videos.html">Back to videos</a></div>`;
+      <p>It may have been deleted.</p><a class="btn btn-secondary" href="videos.html">Back to videos</a></div>`;
     $("#clips-host").innerHTML = "";
     return;
   }
