@@ -44,7 +44,16 @@ export async function handleCallback(code) {
     }),
   });
   const short = await shortRes.json();
-  if (!shortRes.ok) throw new Error(`Instagram token exchange failed: ${JSON.stringify(short)}`);
+  if (!shortRes.ok) {
+    // Meta reuses the "redirect_uri is identical" message for unrelated
+    // failures (used/expired codes, transient errors). Include what we sent
+    // so a real mismatch with the dashboard is visible at a glance.
+    throw new Error(
+      `Instagram token exchange failed: ${JSON.stringify(short)} ` +
+        `(redirect_uri sent: ${redirectUri()} - must be listed EXACTLY in the app's Business login settings; ` +
+        `if it matches, the one-time code was stale - just retry Connect)`
+    );
+  }
 
   const longRes = await fetch(
     `https://graph.instagram.com/access_token?grant_type=ig_exchange_token` +

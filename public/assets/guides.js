@@ -88,6 +88,7 @@ export function buildGuides(s) {
       gotchas: [
         `<strong>"Invalid platform app" / invalid client</strong> → you pasted the Facebook App ID instead of the Instagram-specific one.`,
         `<strong>"Invalid redirect_uri" that comes and goes</strong> → an Instagram cookie-session quirk, not a real URI problem. The connect flow forces a fresh Instagram login to avoid it; if it still appears, retry once or use a private/incognito window.`,
+        `<strong>"Error validating verification code … redirect_uri is identical"</strong> → despite the wording, usually a dead one-time code, and a simple retry of Connect fixes it. If it fails every time: the Business login settings must list this exact URI ${code(s.server.redirectUris.instagram)} as the ONLY entry — delete any variants (http://, trailing slash, old domains) you added while testing.`,
         `<strong>Login says the app isn't available</strong> → tester invite not accepted, or the IG account isn't Business/Creator.`,
         `<strong>Publishing fails fetching the video</strong> → BASE_URL must be this server's public URL; Instagram downloads clips from <code>${esc(base)}/clips/…</code>.`,
         webhookGotcha,
