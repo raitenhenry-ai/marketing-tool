@@ -15,7 +15,13 @@ function redirectUri() {
 }
 
 export function authUrl(state) {
+  // enable_fb_login=0 + force_authentication=1 mirror the URL Meta's own
+  // dashboard generates for Business Login. Without them the flow depends on
+  // the browser's instagram.com cookie session, which intermittently fails
+  // with a bogus "Invalid redirect_uri" when logged out / multi-account.
   const params = new URLSearchParams({
+    enable_fb_login: "0",
+    force_authentication: "1",
     client_id: config.instagram.clientId,
     redirect_uri: redirectUri(),
     response_type: "code",
