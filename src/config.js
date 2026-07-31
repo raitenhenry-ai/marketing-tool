@@ -52,6 +52,12 @@ const config = {
   // Postgres/Neon connection string; empty = local SQLite in data/app.db.
   databaseUrl: env("DATABASE_URL"),
 
+  // Meta (Instagram/Facebook/Threads) webhook verification. Their app setup
+  // flows require a callback URL + verify token even though this tool never
+  // consumes pushed events; /webhooks/meta answers the handshake with this
+  // token and discards everything else.
+  metaVerifyToken: env("META_VERIFY_TOKEN", "shortform-verify"),
+
   dataDir: path.join(rootDir, "data"),
   uploadsDir: path.join(rootDir, "data", "uploads"),
   clipsDir: path.join(rootDir, "data", "clips"),

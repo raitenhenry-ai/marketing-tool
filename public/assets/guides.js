@@ -37,6 +37,17 @@ function guide(key, s, { env, where, steps, gotchas, notes }) {
 
 export function buildGuides(s) {
   const base = s.server.baseUrl;
+  const hook = s.server.metaWebhook || { callbackUrl: `${base}/webhooks/meta`, verifyToken: "shortform-verify" };
+  const webhookStep =
+    `If the setup flow asks for <strong>Webhooks</strong> (a "Callback URL" and "Verify token"), use ` +
+    `Callback URL ${code(hook.callbackUrl)} and Verify token ${code(hook.verifyToken)}. ` +
+    `This tool doesn't consume webhook events — the server just answers Meta's validation ping. ` +
+    `You can skip webhook <em>field subscriptions</em> entirely.`;
+  const webhookGotcha =
+    `<strong>"The callback URL or verify token couldn't be validated"</strong> → the server must be ` +
+    `deployed and reachable first (Meta pings the URL when you hit save), the Callback URL must be exactly ` +
+    `${code(hook.callbackUrl)}, and the token you type must match <code>META_VERIFY_TOKEN</code> ` +
+    `(current value: ${code(hook.verifyToken)}).`;
 
   const guides = [
     guide("youtube", s, {
@@ -68,6 +79,7 @@ export function buildGuides(s) {
         `At developers.facebook.com: <strong>My Apps → Create App</strong> → use case <strong>Other</strong> → type <strong>Business</strong>.`,
         `In the app dashboard, <strong>Add product → Instagram</strong>, then choose <strong>"API setup with Instagram login"</strong> (NOT "with Facebook login" — this tool uses the Instagram-login flavor).`,
         `In that Instagram section, open <strong>Business login settings</strong> and add the redirect URI above under "OAuth redirect URIs".`,
+        webhookStep,
         `Copy the <strong>Instagram App ID</strong> and <strong>Instagram App Secret</strong> shown in the Instagram section — these are <strong>different values</strong> from the Facebook App ID/Secret on the Settings→Basic page. Put them in the Railway variables above and redeploy.`,
         `While the app is in Development mode, add your Instagram account as a tester: <strong>App roles → Roles → Add People → Instagram Tester</strong>, enter the IG username.`,
         `Accept the invite from the Instagram side: instagram.com → Settings → <strong>Apps and websites → Tester invites</strong> → Accept.`,
@@ -77,6 +89,7 @@ export function buildGuides(s) {
         `<strong>"Invalid platform app" / invalid client</strong> → you pasted the Facebook App ID instead of the Instagram-specific one.`,
         `<strong>Login says the app isn't available</strong> → tester invite not accepted, or the IG account isn't Business/Creator.`,
         `<strong>Publishing fails fetching the video</strong> → BASE_URL must be this server's public URL; Instagram downloads clips from <code>${esc(base)}/clips/…</code>.`,
+        webhookGotcha,
       ],
     }),
 
@@ -109,6 +122,7 @@ export function buildGuides(s) {
         `You need to be an admin of at least one <strong>Facebook Page</strong> (clips post to Pages, not personal profiles). Create one at facebook.com/pages/create if needed.`,
         `Use the same Meta app as Instagram (or a new Business-type app) and <strong>Add product → Facebook Login</strong> (may be labeled "Facebook Login for Business").`,
         `Facebook Login → <strong>Settings</strong> → <strong>Valid OAuth Redirect URIs</strong> → paste the redirect URI above.`,
+        webhookStep,
         `Get credentials from <strong>App settings → Basic</strong>: the <strong>App ID</strong> and <strong>App Secret</strong> (this IS the Facebook pair — unlike Instagram's). Put them in the Railway variables and redeploy.`,
         `Connect from the Accounts page and log in with the Facebook account that admins your Pages, approving the requested Page permissions.`,
         `<strong>Every Page you manage is added</strong> as its own account in one connect (each counts toward the 5-account cap). Disconnect any Pages you don't want posting.`,
@@ -117,6 +131,7 @@ export function buildGuides(s) {
         `<strong>"No Facebook Pages found"</strong> → the logged-in user doesn't admin any Page.`,
         `<strong>Permissions error during login</strong> → in Development mode only users with a role on the app can connect; you (the app admin) are fine, others need to be added under App roles.`,
         `<strong>Reel upload fails fetching the video</strong> → BASE_URL must be publicly reachable; Facebook pulls the clip from <code>${esc(base)}/clips/…</code>.`,
+        webhookGotcha,
       ],
     }),
 
@@ -145,6 +160,7 @@ export function buildGuides(s) {
       steps: [
         `In a Meta developer app (a new one or your existing Business app), add the <strong>Threads API</strong> use case/product.`,
         `In the Threads settings, add the redirect URI above under the OAuth redirect URIs.`,
+        webhookStep,
         `Copy the <strong>Threads App ID</strong> and <strong>Threads App Secret</strong> from the Threads use-case settings — like Instagram, these are their own pair, separate from the Facebook App ID/Secret. Set the Railway variables and redeploy.`,
         `While the app is in Development mode, add your Threads profile as a tester (App roles), then accept the invite from Threads: threads.net → Settings → <strong>Website permissions → Invites</strong>.`,
         `Connect from the Accounts page. Captions are automatically trimmed to Threads' 500-character limit.`,
@@ -152,6 +168,7 @@ export function buildGuides(s) {
       gotchas: [
         `<strong>Login says app not available</strong> → tester invite not accepted on the Threads side.`,
         `<strong>Publish fails fetching video</strong> → clips are ingested from <code>${esc(base)}/clips/…</code>; BASE_URL must be public.`,
+        webhookGotcha,
       ],
     }),
 

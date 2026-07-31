@@ -51,6 +51,20 @@ app.get("/healthz", async (req, res) => {
 });
 app.use("/clips", express.static(config.clipsDir));
 
+// Meta (Instagram/Facebook/Threads) webhook endpoint. The app dashboards
+// insist on a callback URL + verify token; we answer the GET handshake and
+// accept-and-ignore the POSTed events (this tool polls, it doesn't listen).
+app.get("/webhooks/meta", (req, res) => {
+  if (
+    req.query["hub.mode"] === "subscribe" &&
+    req.query["hub.verify_token"] === config.metaVerifyToken
+  ) {
+    return res.send(req.query["hub.challenge"]);
+  }
+  res.sendStatus(403);
+});
+app.post("/webhooks/meta", (req, res) => res.sendStatus(200));
+
 // Public legal pages (also the policy URLs platform app reviews ask for).
 const publicDir = path.join(config.rootDir, "public");
 

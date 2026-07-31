@@ -544,6 +544,10 @@ router.get("/settings", wrap(async (req, res) => {
       credentialsConfigured: Object.fromEntries(
         PLATFORM_KEYS.map((k) => [k, platforms[k].isConfigured()])
       ),
+      metaWebhook: {
+        callbackUrl: `${config.baseUrl}/webhooks/meta`,
+        verifyToken: config.metaVerifyToken,
+      },
     },
   });
 }));
