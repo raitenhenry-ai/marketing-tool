@@ -99,7 +99,11 @@ export async function refresh(account) {
 
 async function waitForContainer(containerId, accessToken) {
   for (let i = 0; i < 60; i++) {
-    const res = await fetch(`${GRAPH}/${containerId}?fields=status_code&access_token=${accessToken}`);
+    // "status" carries the human-readable reason (e.g. "Error: Media upload
+    // has failed with error code 2207026"); status_code alone is useless.
+    const res = await fetch(
+      `${GRAPH}/${containerId}?fields=status_code,status&access_token=${accessToken}`
+    );
     const data = await res.json();
     if (data.status_code === "FINISHED") return;
     if (data.status_code === "ERROR") {
@@ -138,6 +142,19 @@ export async function fetchStats(account, mediaIds) {
 }
 
 export async function uploadClip(account, { publicUrl, caption }) {
+  // Instagram downloads the clip from publicUrl; if that 404s or requires
+  // auth, the container just reports a cryptic ERROR. Fail fast instead.
+  try {
+    const probe = await fetch(publicUrl, { method: "HEAD" });
+    if (!probe.ok) {
+      throw new Error(`clip URL returned HTTP ${probe.status}`);
+    }
+  } catch (err) {
+    throw new Error(
+      `Instagram can't fetch the clip: ${String(err.message || err)} ` +
+        `(${publicUrl} must be publicly reachable - check BASE_URL)`
+    );
+  }
   const userId = account.external_id || "me";
   const createRes = await fetch(`${GRAPH}/${userId}/media`, {
     method: "POST",
