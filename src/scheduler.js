@@ -1,5 +1,6 @@
 import config from "./config.js";
 import { q, q1, run } from "./db.js";
+import fs from "node:fs";
 import path from "node:path";
 import * as youtube from "./platforms/youtube.js";
 import * as instagram from "./platforms/instagram.js";
@@ -111,6 +112,13 @@ async function publish(accountRow, clip, video) {
     if (!account) throw new Error("account disconnected");
 
     const filePath = path.join(config.clipsDir, clip.filename);
+    if (!fs.existsSync(filePath)) {
+      throw new Error(
+        `clip file is missing from disk (${clip.filename}). This happens when the server ` +
+          `redeploys without a persistent volume mounted at /app/data - attach one in Railway, ` +
+          `then re-upload or re-process the video to regenerate its clips`
+      );
+    }
     const publicUrl = `${config.baseUrl}/clips/${encodeURIComponent(clip.filename)}`;
     const { title, caption } = textsFor(video, clip);
     const ctx = { filePath, publicUrl, title, caption, description: caption };
