@@ -201,7 +201,7 @@ export function buildGuides(s) {
     }),
 
     guide("linkedin", s, {
-      env: ["LINKEDIN_CLIENT_ID", "LINKEDIN_CLIENT_SECRET"],
+      env: ["LINKEDIN_CLIENT_ID", "LINKEDIN_CLIENT_SECRET", "LINKEDIN_COMPANY_PAGES"],
       where: `<a href="https://developer.linkedin.com" target="_blank" rel="noopener">developer.linkedin.com</a>`,
       steps: [
         `Create an app at developer.linkedin.com → <strong>Create app</strong>. It must be associated with a <strong>LinkedIn Page</strong> (create a free company Page if you don't have one; this is just the app's identity — posts go to your personal feed).`,
@@ -209,10 +209,11 @@ export function buildGuides(s) {
         `In the <strong>Auth</strong> tab, add the redirect URI above under "Authorized redirect URLs".`,
         `Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> from the Auth tab into the Railway variables and redeploy.`,
         `Connect from the Accounts page. Clips post as video posts on the connected member's personal feed.`,
+        `<strong>To post as a Company Page instead:</strong> there's no separate "business login" on LinkedIn — you always sign in with your personal account, and Pages you admin ride on top. In the app's <strong>Products</strong> tab request <strong>"Community Management API"</strong> (form + LinkedIn review, usually a few days). Once approved, set <code>LINKEDIN_COMPANY_PAGES=true</code> in Railway and reconnect — every Page you admin is added as its own account alongside your personal feed (disconnect the personal one if you don't want it posting).`,
       ],
       notes: `Standard LinkedIn apps don't get refresh tokens, so the connection expires roughly every <strong>60 days</strong> — reconnect from the Accounts page when posts start failing with auth errors. LinkedIn also doesn't expose analytics for personal posts, so this platform shows no numbers on the Analytics page.`,
       gotchas: [
-        `<strong>unauthorized_scope at login</strong> → the two products above aren't added/approved on the app yet.`,
+        `<strong>unauthorized_scope at login</strong> → the two products above aren't added/approved on the app yet — or <code>LINKEDIN_COMPANY_PAGES=true</code> is set without the Community Management API being approved; set it back to false until approval.`,
         `<strong>Auth errors after ~2 months</strong> → token expired by design; reconnect the account.`,
       ],
     }),

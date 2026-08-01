@@ -113,6 +113,10 @@ const config = {
   linkedin: {
     clientId: env("LINKEDIN_CLIENT_ID"),
     clientSecret: env("LINKEDIN_CLIENT_SECRET"),
+    // Post as LinkedIn Company Pages the member admins. Requires the app to
+    // have the "Community Management API" product approved - without it the
+    // extra scopes make the login fail with unauthorized_scope.
+    companyPages: (process.env.LINKEDIN_COMPANY_PAGES || "false").toLowerCase() === "true",
   },
 };
 

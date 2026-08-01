@@ -17,11 +17,16 @@ function redirectUri() {
 }
 
 export function authUrl(state) {
+  // Company-page mode needs org scopes, which only exist once the app has
+  // the "Community Management API" product approved.
+  const scope = config.linkedin.companyPages
+    ? "openid profile w_member_social r_organization_admin w_organization_social"
+    : "openid profile w_member_social";
   const params = new URLSearchParams({
     response_type: "code",
     client_id: config.linkedin.clientId,
     redirect_uri: redirectUri(),
-    scope: "openid profile w_member_social",
+    scope,
     state,
   });
   return `${OAUTH}/authorization?${params}`;
@@ -50,13 +55,45 @@ export async function handleCallback(code) {
     throw new Error(`LinkedIn profile lookup failed: ${JSON.stringify(me)}`);
   }
 
-  return {
+  const base = {
     accessToken: data.access_token,
     refreshToken: data.refresh_token || null,
     expiresAt: Date.now() + (data.expires_in || 60 * 24 * 3600) * 1000,
-    externalId: String(me.sub),
-    displayName: me.name || "LinkedIn member",
   };
+  const member = { ...base, externalId: String(me.sub), displayName: me.name || "LinkedIn member" };
+  if (!config.linkedin.companyPages) return member;
+
+  // Company-page mode: every organization the member administers becomes its
+  // own account, posting as the Page (author urn:li:organization:{id}).
+  const accounts = [member];
+  try {
+    const aclRes = await fetch(
+      `${API}/v2/organizationAcls?q=roleAssignee&role=ADMINISTRATOR&state=APPROVED&count=50`,
+      { headers: { Authorization: `Bearer ${data.access_token}` } }
+    );
+    const acls = await aclRes.json();
+    if (!aclRes.ok) throw new Error(JSON.stringify(acls));
+    for (const el of acls.elements || []) {
+      const orgId = String(el.organization || "").replace("urn:li:organization:", "");
+      if (!orgId) continue;
+      let name = `Company Page ${orgId}`;
+      try {
+        const orgRes = await fetch(`${API}/v2/organizations/${orgId}`, {
+          headers: { Authorization: `Bearer ${data.access_token}` },
+        });
+        const org = await orgRes.json();
+        if (orgRes.ok && org.localizedName) name = org.localizedName;
+      } catch { /* cosmetic only */ }
+      accounts.push({ ...base, externalId: `org:${orgId}`, displayName: `${name} (Page)` });
+    }
+    console.log(`[auth] linkedin: member + ${accounts.length - 1} company page(s)`);
+  } catch (err) {
+    console.warn(
+      "[auth] linkedin: organization lookup failed (Community Management API approved?):",
+      String(err.message || err)
+    );
+  }
+  return { accounts };
 }
 
 export async function refresh(account) {
@@ -102,7 +139,9 @@ async function api(path, account, options = {}) {
 }
 
 export async function uploadClip(account, { filePath, title, caption }) {
-  const owner = `urn:li:person:${account.external_id}`;
+  const owner = String(account.external_id).startsWith("org:")
+    ? `urn:li:organization:${String(account.external_id).slice(4)}`
+    : `urn:li:person:${account.external_id}`;
   const size = fs.statSync(filePath).size;
 
   const { data: init } = await api("/rest/videos?action=initializeUpload", account, {
