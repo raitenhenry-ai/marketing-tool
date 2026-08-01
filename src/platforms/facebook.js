@@ -16,10 +16,14 @@ function redirectUri() {
 }
 
 export function authUrl(state) {
+  // auth_type=rerequest forces the permission/Page-picker screen on every
+  // connect. Without it Facebook silently reuses the first grant, so Pages
+  // added later never appear when reconnecting.
   const params = new URLSearchParams({
     client_id: config.facebook.appId,
     redirect_uri: redirectUri(),
     response_type: "code",
+    auth_type: "rerequest",
     state,
   });
   // "Facebook Login for Business" (Business-type apps) replaces scope with a

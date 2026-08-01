@@ -139,7 +139,7 @@ export function buildGuides(s) {
         `<strong>"Feature Unavailable: Facebook Login is currently unavailable"</strong> → the Basic profile is incomplete (icon, category, privacy/terms/data-deletion URLs); complete it, save, and wait — the suspension can take hours to lift. A fresh, fully-filled app is often faster than waiting.`,
         `<strong>Generic "Sorry, something went wrong" on the login dialog</strong> → in order of likelihood: the app is Live (switch to Development); the configuration's token type is System-user instead of User; the logged-in account has no role on the app; no business portfolio connected. If everything checks out, the app's login state is poisoned — a fresh Business app set up in one pass fixes it.`,
         `<strong>"No Facebook Pages found"</strong> → the logged-in user doesn't manage any Page; share the Pages to it first (Page → Settings → Page access).`,
-        `<strong>New Pages don't show up</strong> → the Page list is captured at connect time; disconnect and reconnect Facebook to refresh it.`,
+        `<strong>New Pages don't show up</strong> → reconnect and make sure the new Page is CHECKED in Facebook's picker. If the picker doesn't list it: facebook.com → Settings → <strong>Apps and websites</strong> → this app → View and edit → add the Page there, then reconnect.`,
         `<strong>Reel upload fails fetching the video</strong> → BASE_URL must be publicly reachable; Facebook pulls the clip from <code>${esc(base)}/clips/…</code>.`,
         webhookGotcha,
       ],
