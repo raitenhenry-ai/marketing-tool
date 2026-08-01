@@ -44,6 +44,11 @@ app.get("/healthz", async (req, res) => {
       uptimeSeconds: Math.round(process.uptime()),
       processingQueue: queueLength(),
       connectedAccounts: accounts,
+      // Which Facebook login flavor the RUNNING process will use - proves
+      // whether FACEBOOK_CONFIG_ID actually reached this deployment.
+      facebookLogin: config.facebook.configId
+        ? `config_id (…${config.facebook.configId.slice(-4)})`
+        : "scope (FACEBOOK_CONFIG_ID not set)",
     });
   } catch (err) {
     res.status(500).json({ ok: false, error: String(err.message || err) });
