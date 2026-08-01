@@ -17,10 +17,11 @@ function redirectUri() {
 }
 
 export function authUrl(state) {
-  // Company-page mode needs org scopes, which only exist once the app has
-  // the "Community Management API" product approved.
+  // Company-page mode targets a dedicated app whose ONLY product is the
+  // Community Management API (LinkedIn forbids mixing it with others), so
+  // the member sign-in scopes don't exist there - org scopes only.
   const scope = config.linkedin.companyPages
-    ? "openid profile w_member_social r_organization_admin w_organization_social"
+    ? "r_organization_admin w_organization_social"
     : "openid profile w_member_social";
   const params = new URLSearchParams({
     response_type: "code",
@@ -47,32 +48,26 @@ export async function handleCallback(code) {
   const data = await res.json();
   if (!res.ok) throw new Error(`LinkedIn token exchange failed: ${JSON.stringify(data)}`);
 
-  const meRes = await fetch(`${API}/v2/userinfo`, {
-    headers: { Authorization: `Bearer ${data.access_token}` },
-  });
-  const me = await meRes.json();
-  if (!meRes.ok || !me.sub) {
-    throw new Error(`LinkedIn profile lookup failed: ${JSON.stringify(me)}`);
-  }
-
   const base = {
     accessToken: data.access_token,
     refreshToken: data.refresh_token || null,
     expiresAt: Date.now() + (data.expires_in || 60 * 24 * 3600) * 1000,
   };
-  const member = { ...base, externalId: String(me.sub), displayName: me.name || "LinkedIn member" };
-  if (!config.linkedin.companyPages) return member;
 
-  // Company-page mode: every organization the member administers becomes its
-  // own account, posting as the Page (author urn:li:organization:{id}).
-  const accounts = [member];
-  try {
+  // Company-page mode (dedicated Community Management API app): no member
+  // sign-in scopes exist there, so skip the profile call entirely - every
+  // organization the member administers becomes its own account, posting as
+  // the Page (author urn:li:organization:{id}).
+  if (config.linkedin.companyPages) {
     const aclRes = await fetch(
       `${API}/v2/organizationAcls?q=roleAssignee&role=ADMINISTRATOR&state=APPROVED&count=50`,
       { headers: { Authorization: `Bearer ${data.access_token}` } }
     );
     const acls = await aclRes.json();
-    if (!aclRes.ok) throw new Error(JSON.stringify(acls));
+    if (!aclRes.ok) {
+      throw new Error(`LinkedIn organization lookup failed: ${JSON.stringify(acls)}`);
+    }
+    const accounts = [];
     for (const el of acls.elements || []) {
       const orgId = String(el.organization || "").replace("urn:li:organization:", "");
       if (!orgId) continue;
@@ -86,14 +81,23 @@ export async function handleCallback(code) {
       } catch { /* cosmetic only */ }
       accounts.push({ ...base, externalId: `org:${orgId}`, displayName: `${name} (Page)` });
     }
-    console.log(`[auth] linkedin: member + ${accounts.length - 1} company page(s)`);
-  } catch (err) {
-    console.warn(
-      "[auth] linkedin: organization lookup failed (Community Management API approved?):",
-      String(err.message || err)
-    );
+    if (!accounts.length) {
+      throw new Error(
+        "No LinkedIn Company Pages found - the connecting member must be a super admin of the Page"
+      );
+    }
+    console.log(`[auth] linkedin: ${accounts.length} company page(s)`);
+    return { accounts };
   }
-  return { accounts };
+
+  const meRes = await fetch(`${API}/v2/userinfo`, {
+    headers: { Authorization: `Bearer ${data.access_token}` },
+  });
+  const me = await meRes.json();
+  if (!meRes.ok || !me.sub) {
+    throw new Error(`LinkedIn profile lookup failed: ${JSON.stringify(me)}`);
+  }
+  return { ...base, externalId: String(me.sub), displayName: me.name || "LinkedIn member" };
 }
 
 export async function refresh(account) {
