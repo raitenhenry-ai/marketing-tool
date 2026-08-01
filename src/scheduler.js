@@ -261,12 +261,65 @@ async function cadencePublish(account, now) {
   if (clip) await publish(account, clip, { title: clip.title });
 }
 
+// Facebook Pages created after the initial connect: the stored user token
+// lets us re-list Pages and add new ones automatically - no reconnect needed
+// (as long as the login granted "all current and future Pages").
+const PAGE_SYNC_MS = 60 * 60 * 1000;
+let lastPageSync = 0;
+export async function syncFacebookPages(now = Date.now()) {
+  const row = await q1(
+    "SELECT refresh_token FROM accounts WHERE platform = 'facebook' AND refresh_token IS NOT NULL LIMIT 1"
+  );
+  if (!row) {
+    // Connected before sync support (or not connected at all) - one fresh
+    // connect stores the user token this scan needs.
+    const any = await q1("SELECT id FROM accounts WHERE platform = 'facebook' LIMIT 1");
+    return { added: 0, needsReconnect: Boolean(any) };
+  }
+
+  const pages = await facebook.listPages(row.refresh_token);
+
+  let added = 0;
+  for (const page of pages) {
+    const existing = await q1(
+      "SELECT id FROM accounts WHERE platform = 'facebook' AND external_id = ?",
+      [String(page.id)]
+    );
+    if (existing) {
+      await run(
+        "UPDATE accounts SET access_token = ?, display_name = ? WHERE id = ?",
+        [page.access_token, page.name, existing.id]
+      );
+      continue;
+    }
+    const count = Number((await q1("SELECT COUNT(*) AS n FROM accounts WHERE platform = 'facebook'")).n);
+    if (count >= config.maxAccountsPerPlatform) {
+      console.log(`[scheduler] facebook: new page "${page.name}" found but the ${config.maxAccountsPerPlatform}-account cap is reached`);
+      continue;
+    }
+    await run(
+      `INSERT INTO accounts (platform, access_token, refresh_token, expires_at, external_id, display_name, connected_at)
+       VALUES ('facebook', ?, ?, NULL, ?, ?, ?)`,
+      [page.access_token, row.refresh_token, String(page.id), page.name, now]
+    );
+    console.log(`[scheduler] facebook: auto-added new page "${page.name}"`);
+    added++;
+  }
+  return { added, needsReconnect: false };
+}
+
 async function tick() {
   if (running) return;
   running = true;
   try {
     const activePlatforms = (await q("SELECT DISTINCT platform FROM accounts")).map((a) => a.platform);
     if (!activePlatforms.length) return;
+
+    if (Date.now() - lastPageSync > PAGE_SYNC_MS) {
+      lastPageSync = Date.now();
+      await syncFacebookPages().catch((e) =>
+        console.warn("[scheduler] facebook page sync failed (user token expired? reconnect):", String(e.message || e)));
+    }
 
     await reflowOverdueClips();
     const now = Date.now();

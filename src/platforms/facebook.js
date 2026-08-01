@@ -54,24 +54,64 @@ export async function handleCallback(code) {
   const long = await longRes.json();
   if (!longRes.ok) throw new Error(`Facebook long-lived token failed: ${JSON.stringify(long)}`);
 
-  const pagesRes = await fetch(
-    `${GRAPH}/me/accounts?fields=id,name,access_token&limit=25&access_token=${long.access_token}`
+  const pageList = await listPages(long.access_token);
+  console.log(
+    `[auth] facebook grant covers ${pageList.length} page(s): ` +
+      pageList.map((p) => `${p.name} (${p.id})`).join(", ")
   );
-  const pages = await pagesRes.json();
-  if (!pagesRes.ok) throw new Error(`Facebook pages lookup failed: ${JSON.stringify(pages)}`);
-  if (!pages.data?.length) {
-    throw new Error("No Facebook Pages found - the app publishes to Pages, create one first");
+  if (!pageList.length) {
+    throw new Error(
+      "No Facebook Pages granted - make sure the Page is CHECKED on the permission screen during login"
+    );
   }
 
+  // The long-lived USER token rides along as refreshToken on every Page row:
+  // the scheduler uses it to re-list Pages hourly and auto-add new ones, so
+  // Pages created after this login appear without reconnecting.
   return {
-    accounts: pages.data.map((page) => ({
+    accounts: pageList.map((page) => ({
       accessToken: page.access_token,
-      refreshToken: null,
+      refreshToken: long.access_token,
       expiresAt: null, // Page tokens from a long-lived user token don't expire
       externalId: String(page.id),
       displayName: page.name,
     })),
   };
+}
+
+// Every Page the user manages (that the grant covers), following pagination.
+export async function listPages(userToken) {
+  const pageList = [];
+  let url = `${GRAPH}/me/accounts?fields=id,name,access_token&limit=100&access_token=${userToken}`;
+  while (url) {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!res.ok) throw new Error(`Facebook pages lookup failed: ${JSON.stringify(data)}`);
+    pageList.push(...(data.data || []));
+    url = data.paging?.next || null;
+  }
+  return pageList;
+}
+
+// Wipes the app's saved authorization for the user behind the stored Page
+// token, so the next login dialog shows the full first-time Page picker
+// instead of silently reusing the previous (partial) Page selection.
+// Best-effort: on any failure the picker is just sticky again.
+export async function resetGrant(pageToken) {
+  const appToken = `${config.facebook.appId}|${config.facebook.appSecret}`;
+  const dbgRes = await fetch(
+    `${GRAPH}/debug_token?input_token=${encodeURIComponent(pageToken)}` +
+      `&access_token=${encodeURIComponent(appToken)}`
+  );
+  const dbg = await dbgRes.json();
+  const userId = dbg?.data?.user_id;
+  if (!userId) return false;
+  const delRes = await fetch(
+    `${GRAPH}/${userId}/permissions?access_token=${encodeURIComponent(appToken)}`,
+    { method: "DELETE" }
+  );
+  console.log(`[auth] facebook grant reset for user ${userId}: ${delRes.ok ? "ok" : "failed"}`);
+  return delRes.ok;
 }
 
 export async function refresh() {

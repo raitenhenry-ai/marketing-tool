@@ -12,7 +12,7 @@ import { parseCuts } from "../cuts.js";
 import { deleteVideoFiles } from "../cleanup.js";
 import { authEnabled } from "../auth.js";
 import { refreshMetrics, metricsStatus } from "../metrics.js";
-import { platforms, textsFor } from "../scheduler.js";
+import { platforms, textsFor, syncFacebookPages } from "../scheduler.js";
 
 const PLATFORM_KEYS = Object.keys(platforms); // youtube, instagram, tiktok, facebook, x
 
@@ -502,6 +502,11 @@ router.post("/metrics/refresh", wrap(async (req, res) => {
   // Fire and forget; the analytics endpoint reflects progress.
   refreshMetrics().catch((err) => console.error("[metrics] manual refresh:", err));
   res.json({ ok: true });
+}));
+
+// Re-scan the connected Facebook login for Pages created after connecting.
+router.post("/facebook/sync-pages", wrap(async (req, res) => {
+  res.json(await syncFacebookPages());
 }));
 
 router.get("/settings", wrap(async (req, res) => {

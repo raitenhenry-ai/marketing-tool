@@ -43,6 +43,21 @@ document.addEventListener("change", async (e) => {
 });
 
 document.addEventListener("click", async (e) => {
+  const sync = e.target.closest("[data-sync-pages]");
+  if (sync) {
+    sync.disabled = true;
+    try {
+      const r = await api("/api/facebook/sync-pages", { method: "POST" });
+      if (r.needsReconnect) {
+        toast("One reconnect needed first — hit Connect once and approve all Pages; after that new Pages are found automatically", "error");
+      } else {
+        toast(r.added ? `Added ${r.added} new Page(s)` : "No new Pages found on this connection");
+      }
+      load();
+    } catch (err) { toast(`Page scan failed: ${err.message} — reconnect to refresh the connection`, "error"); }
+    sync.disabled = false;
+    return;
+  }
   const btn = e.target.closest("[data-disconnect]");
   if (!btn) return;
   const ok = await confirmDialog({
@@ -104,6 +119,9 @@ function platformCard(key, info, max) {
     : n >= max
       ? `<span class="muted" style="font-size:13px">Account limit reached (${n}/${max})</span>`
       : `<a class="btn btn-secondary" href="/auth/${key}">${icons.plus} Connect account (${n}/${max})</a>`;
+  const syncPages = key === "facebook" && n > 0
+    ? ` <button class="btn btn-secondary" data-sync-pages title="Re-scan the connected login for Pages created since connecting">${icons.retry} Find new Pages</button>`
+    : "";
 
   return `<div class="card platform-card">
     <div class="platform-head">
@@ -116,7 +134,7 @@ function platformCard(key, info, max) {
       ${info.configured ? `<span class="badge ${n ? "done" : ""}">${n ? `${n} connected` : "not connected"}</span>` : ""}
     </div>
     ${accountRows}
-    <div class="${n ? "mt-8" : ""}">${action}</div>
+    <div class="${n ? "mt-8" : ""}">${action}${syncPages}</div>
   </div>`;
 }
 

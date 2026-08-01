@@ -39,6 +39,17 @@ router.get("/:platform", async (req, res) => {
     extras.codeChallenge = crypto.createHash("sha256").update(verifier).digest("base64url");
     stateData = { codeVerifier: verifier };
   }
+
+  // Facebook silently reuses the first grant's Page selection on re-login,
+  // so Pages added later never make it into the token. Wiping the grant
+  // before each connect forces the full Page picker to show again. The old
+  // Page tokens die here and are re-minted when the login completes - so
+  // finish the dialog once started.
+  if (name === "facebook") {
+    const row = await q1("SELECT access_token FROM accounts WHERE platform = 'facebook' LIMIT 1");
+    if (row) await facebook.resetGrant(row.access_token).catch(() => {});
+  }
+
   res.redirect(platform.authUrl(createState(name, stateData), extras));
 });
 
