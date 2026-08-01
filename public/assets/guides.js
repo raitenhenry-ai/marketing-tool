@@ -118,7 +118,7 @@ export function buildGuides(s) {
     }),
 
     guide("facebook", s, {
-      env: ["FACEBOOK_APP_ID", "FACEBOOK_APP_SECRET"],
+      env: ["FACEBOOK_APP_ID", "FACEBOOK_APP_SECRET", "FACEBOOK_CONFIG_ID"],
       where: `<a href="https://developers.facebook.com" target="_blank" rel="noopener">developers.facebook.com</a>`,
       steps: [
         `You need to be an admin of at least one <strong>Facebook Page</strong> (clips post to Pages, not personal profiles). Create one at facebook.com/pages/create if needed.`,
@@ -126,6 +126,7 @@ export function buildGuides(s) {
         `Facebook Login → <strong>Settings</strong> → <strong>Valid OAuth Redirect URIs</strong> → paste the redirect URI above.`,
         webhookStep,
         `Get credentials from <strong>App settings → Basic</strong>: the <strong>App ID</strong> and <strong>App Secret</strong> (this IS the Facebook pair — unlike Instagram's). Put them in the Railway variables and redeploy.`,
+        `<strong>Business-type apps only</strong> (yours is, if it also runs Instagram): the product is called <strong>Facebook Login for Business</strong> and needs a <em>configuration</em>. Go to <strong>Facebook Login for Business → Configurations → Create configuration</strong>: choose token type <strong>User access token</strong>, add the permissions <code>pages_show_list</code>, <code>pages_manage_posts</code>, <code>pages_read_engagement</code>, save, then copy the <strong>Configuration ID</strong> into <code>FACEBOOK_CONFIG_ID</code> and redeploy. Without it the login dialog can refuse to load with a misleading "domain not included in app's domains" error.`,
         `Connect from the Accounts page and log in with the Facebook account that admins your Pages, approving the requested Page permissions.`,
         `<strong>Every Page you manage is added</strong> as its own account in one connect (each counts toward the 5-account cap). Disconnect any Pages you don't want posting.`,
       ],

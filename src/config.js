@@ -94,6 +94,9 @@ const config = {
   facebook: {
     appId: env("FACEBOOK_APP_ID"),
     appSecret: env("FACEBOOK_APP_SECRET"),
+    // Business-type Meta apps use "Facebook Login for Business", whose login
+    // dialog wants a configuration ID instead of the legacy scope parameter.
+    configId: env("FACEBOOK_CONFIG_ID"),
   },
   x: {
     clientId: env("X_CLIENT_ID"),

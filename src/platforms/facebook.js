@@ -20,9 +20,16 @@ export function authUrl(state) {
     client_id: config.facebook.appId,
     redirect_uri: redirectUri(),
     response_type: "code",
-    scope: "pages_show_list,pages_manage_posts,pages_read_engagement",
     state,
   });
+  // "Facebook Login for Business" (Business-type apps) replaces scope with a
+  // dashboard-created configuration; the legacy scope param covers Consumer
+  // apps with classic Facebook Login.
+  if (config.facebook.configId) {
+    params.set("config_id", config.facebook.configId);
+  } else {
+    params.set("scope", "pages_show_list,pages_manage_posts,pages_read_engagement");
+  }
   return `https://www.facebook.com/v23.0/dialog/oauth?${params}`;
 }
 
