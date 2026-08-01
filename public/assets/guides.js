@@ -130,6 +130,7 @@ export function buildGuides(s) {
         `<strong>Every Page you manage is added</strong> as its own account in one connect (each counts toward the 5-account cap). Disconnect any Pages you don't want posting.`,
       ],
       gotchas: [
+        `<strong>"The domain of this URL isn't included in the app's domains"</strong> → App settings → Basic → <strong>App Domains</strong>: add ${code(base.replace(/^https?:\/\//, ""))} (domain only, no https:// or path), then at the bottom of the same page <strong>Add Platform → Website</strong> with Site URL ${code(base + "/")}, and Save.`,
         `<strong>"No Facebook Pages found"</strong> → the logged-in user doesn't admin any Page.`,
         `<strong>Permissions error during login</strong> → in Development mode only users with a role on the app can connect; you (the app admin) are fine, others need to be added under App roles.`,
         `<strong>Reel upload fails fetching the video</strong> → BASE_URL must be publicly reachable; Facebook pulls the clip from <code>${esc(base)}/clips/…</code>.`,
