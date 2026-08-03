@@ -498,6 +498,17 @@ router.get("/analytics", wrap(async (req, res) => {
   });
 }));
 
+// Re-queue every failed post (e.g. after fixing a platform-side issue such
+// as depleted X credits or a blocked Meta app). Exhausted failures are
+// deleted so the scheduler re-attempts from scratch; ones still on a retry
+// timer become due immediately.
+router.post("/uploads/retry-failed", wrap(async (req, res) => {
+  const n = Number((await q1("SELECT COUNT(*) AS n FROM uploads WHERE status = 'failed'")).n);
+  await dbRun("DELETE FROM uploads WHERE status = 'failed' AND next_attempt_at IS NULL");
+  await dbRun("UPDATE uploads SET next_attempt_at = ? WHERE status = 'failed'", [Date.now()]);
+  res.json({ retried: n });
+}));
+
 router.post("/metrics/refresh", wrap(async (req, res) => {
   // Fire and forget; the analytics endpoint reflects progress.
   refreshMetrics().catch((err) => console.error("[metrics] manual refresh:", err));

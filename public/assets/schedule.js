@@ -1,9 +1,22 @@
 import {
   $, $$, api, initShell, icons, esc, fmtTime, fmtDay, fmtDateTime,
-  uploadChip, PLATFORMS,
+  uploadChip, toast, PLATFORMS,
 } from "./common.js";
 
 initShell({ title: "Schedule" });
+
+$("#retry-failed").innerHTML = `${icons.retry} Retry failed posts`;
+$("#retry-failed").addEventListener("click", async (e) => {
+  e.target.closest("button").disabled = true;
+  try {
+    const r = await api("/api/uploads/retry-failed", { method: "POST" });
+    toast(r.retried
+      ? `${r.retried} failed post(s) re-queued — the scheduler retries them within a minute`
+      : "No failed posts to retry");
+    load();
+  } catch (err) { toast(err.message, "error"); }
+  e.target.closest("button").disabled = false;
+});
 
 let data = null;
 let view = "upcoming";
