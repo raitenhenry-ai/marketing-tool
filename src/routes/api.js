@@ -210,6 +210,7 @@ router.get("/videos/:id", wrap(async (req, res) => {
       genHashtags: JSON.parse(c.gen_hashtags || "[]"),
       url: `/clips/${encodeURIComponent(c.filename)}`,
       uploads: uploads.map((u) => ({
+        id: u.id,
         platform: u.platform,
         accountName: u.account_name,
         status: u.status,
@@ -413,7 +414,7 @@ router.get("/schedule", wrap(async (req, res) => {
   }
 
   const history = (await q(
-    `SELECT uploads.platform, uploads.status, uploads.error, uploads.uploaded_at,
+    `SELECT uploads.id AS upload_id, uploads.platform, uploads.status, uploads.error, uploads.uploaded_at,
             uploads.attempts, uploads.platform_video_id, accounts.display_name AS account_name,
             clips.part_number, clips.total_parts, videos.id AS video_id, videos.title
      FROM uploads
@@ -502,6 +503,15 @@ router.get("/analytics", wrap(async (req, res) => {
 // as depleted X credits or a blocked Meta app). Exhausted failures are
 // deleted so the scheduler re-attempts from scratch; ones still on a retry
 // timer become due immediately.
+// Retry a single failed post: reset its attempts and make it due now.
+router.post("/uploads/:id/retry", wrap(async (req, res) => {
+  const u = await q1("SELECT * FROM uploads WHERE id = ?", [req.params.id]);
+  if (!u) return res.status(404).json({ error: "Post not found" });
+  if (u.status !== "failed") return res.status(400).json({ error: "Only failed posts can be retried" });
+  await dbRun("UPDATE uploads SET attempts = 0, next_attempt_at = ? WHERE id = ?", [Date.now(), u.id]);
+  res.json({ ok: true });
+}));
+
 router.post("/uploads/retry-failed", wrap(async (req, res) => {
   const n = Number((await q1("SELECT COUNT(*) AS n FROM uploads WHERE status = 'failed'")).n);
   await dbRun("DELETE FROM uploads WHERE status = 'failed' AND next_attempt_at IS NULL");

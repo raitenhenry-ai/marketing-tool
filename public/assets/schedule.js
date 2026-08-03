@@ -97,6 +97,9 @@ function renderHistory() {
           </div>
           <div class="tl-side">
             <span class="badge ${u.status}"><span class="bdot"></span>${u.status}</span>
+            ${u.status === "failed" && u.upload_id
+              ? `<button class="icon-btn" data-retry-upload="${u.upload_id}" title="Retry this post now">${icons.retry}</button>`
+              : ""}
           </div>
         </div>`).join("")}
     </div>`).join("");

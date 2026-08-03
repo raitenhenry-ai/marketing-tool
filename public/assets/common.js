@@ -298,11 +298,29 @@ export function uploadChip(u) {
   const who = u.account_name || u.accountName;
   const status = u.status;
   const title = u.error ? ` title="${esc(u.error)}"` : "";
+  const retry = status === "failed" && u.id
+    ? `<button class="icon-btn" data-retry-upload="${u.id}" title="Retry this post now" style="width:22px;height:22px;vertical-align:middle">${icons.retry}</button>`
+    : "";
   return `<span class="badge ${status}"${title}>
     <span class="pdot ${u.platform}" style="width:6px;height:6px;border-radius:2px"></span>
     ${label}${who ? ` · ${esc(who)}` : ""} — ${status}
-  </span>`;
+  </span>${retry}`;
 }
+
+// Single-post retry works from any page that renders failed posts.
+document.addEventListener("click", async (e) => {
+  const btn = e.target.closest("[data-retry-upload]");
+  if (!btn) return;
+  e.preventDefault();
+  btn.disabled = true;
+  try {
+    await api(`/api/uploads/${btn.dataset.retryUpload}/retry`, { method: "POST" });
+    toast("Post re-queued — the scheduler retries it within a minute");
+  } catch (err) {
+    toast(String(err.message || err), "error");
+    btn.disabled = false;
+  }
+});
 
 export function statusBadge(status) {
   const labels = { processing: "Processing", ready: "Ready", failed: "Failed" };
