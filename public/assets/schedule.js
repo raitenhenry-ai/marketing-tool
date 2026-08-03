@@ -38,6 +38,23 @@ document.addEventListener("click", (e) => {
   render();
 });
 
+document.addEventListener("click", async (e) => {
+  const skip = e.target.closest("[data-skip-clip]");
+  if (!skip) return;
+  skip.disabled = true;
+  try {
+    await api(`/api/clips/${skip.dataset.skipClip}/skip`, {
+      method: "POST",
+      body: JSON.stringify({ accountId: Number(skip.dataset.skipAccount) }),
+    });
+    toast("Removed from the queue — the line moves up. Undo from the Posted column.");
+    load();
+  } catch (err) {
+    toast(String(err.message || err), "error");
+    skip.disabled = false;
+  }
+});
+
 function groupByDay(items, key) {
   const groups = new Map();
   for (const item of items) {
@@ -149,6 +166,9 @@ function accountCard(a) {
               : `${u.estimated ? "≈ " : ""}${fmtDateTime(u.plannedAt)}`}</span>
             <span class="truncate"><a href="video.html?id=${u.videoId}">${esc(u.genTitle || u.videoTitle)}</a></span>
             <span class="muted nowrap">Part ${u.part}/${u.totalParts}${u.retry ? " · retry" : ""}</span>
+            <button class="icon-btn danger" style="margin-left:auto;width:22px;height:22px"
+              data-skip-clip="${u.clipId}" data-skip-account="${a.id}"
+              title="Remove from this account's queue (won't post; the line moves up)">✕</button>
           </div>`).join("") : `<div class="mini-row muted">nothing queued</div>`}
         ${a.upcoming.length > 10 ? `<div class="mini-row muted">+ ${a.upcoming.length - 10} more</div>` : ""}
       </div>
@@ -161,6 +181,9 @@ function accountCard(a) {
             <span class="muted nowrap">Part ${u.part}/${u.total_parts}</span>
             <span class="badge ${u.status}" style="margin-left:auto"><span class="bdot"></span>${u.status}</span>
             ${u.url ? `<a class="icon-btn" href="${esc(u.url)}" target="_blank" rel="noopener" title="View the post">${icons.external}</a>` : ""}
+            ${(u.status === "failed" || u.status === "skipped") && u.upload_id
+              ? `<button class="icon-btn" data-retry-upload="${u.upload_id}" title="${u.status === "skipped" ? "Put back in the queue" : "Retry this post now"}">${icons.retry}</button>`
+              : ""}
           </div>`).join("") : `<div class="mini-row muted">nothing posted yet</div>`}
       </div>
     </div>

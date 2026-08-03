@@ -452,14 +452,14 @@ router.get("/schedule/accounts", wrap(async (req, res) => {
     }
 
     const posted = (await q(
-      `SELECT uploads.status, uploads.error, uploads.uploaded_at, uploads.attempts,
-              uploads.platform, uploads.platform_video_id, uploads.public_post_id,
+      `SELECT uploads.id AS upload_id, uploads.status, uploads.error, uploads.uploaded_at,
+              uploads.attempts, uploads.platform, uploads.platform_video_id, uploads.public_post_id,
               clips.part_number AS part, clips.total_parts, clips.gen_title,
               videos.id AS video_id, videos.title AS video_title
        FROM uploads
        JOIN clips ON clips.id = uploads.clip_id
        JOIN videos ON videos.id = clips.video_id
-       WHERE uploads.account_id = ? AND uploads.status IN ('done', 'failed')
+       WHERE uploads.account_id = ? AND uploads.status IN ('done', 'failed', 'skipped')
        ORDER BY COALESCE(uploads.uploaded_at, 0) DESC, uploads.id DESC LIMIT 60`,
       [a.id]
     )).map((u) => ({
@@ -599,12 +599,42 @@ router.get("/analytics", wrap(async (req, res) => {
 // as depleted X credits or a blocked Meta app). Exhausted failures are
 // deleted so the scheduler re-attempts from scratch; ones still on a retry
 // timer become due immediately.
-// Retry a single failed post: reset its attempts and make it due now.
+// Retry a single failed post (or bring a skipped one back into the queue):
+// reset its attempts and make it due now.
 router.post("/uploads/:id/retry", wrap(async (req, res) => {
   const u = await q1("SELECT * FROM uploads WHERE id = ?", [req.params.id]);
   if (!u) return res.status(404).json({ error: "Post not found" });
-  if (u.status !== "failed") return res.status(400).json({ error: "Only failed posts can be retried" });
-  await dbRun("UPDATE uploads SET attempts = 0, next_attempt_at = ? WHERE id = ?", [Date.now(), u.id]);
+  if (u.status !== "failed" && u.status !== "skipped") {
+    return res.status(400).json({ error: "Only failed or skipped posts can be retried" });
+  }
+  await dbRun(
+    "UPDATE uploads SET status = 'failed', attempts = 0, next_attempt_at = ? WHERE id = ?",
+    [Date.now(), u.id]
+  );
+  res.json({ ok: true });
+}));
+
+// Drop one queued post from one account's line: it never publishes there,
+// and everything behind it moves up. Undo via the retry endpoint.
+router.post("/clips/:clipId/skip", wrap(async (req, res) => {
+  const clip = await q1("SELECT * FROM clips WHERE id = ?", [req.params.clipId]);
+  if (!clip) return res.status(404).json({ error: "Clip not found" });
+  const account = await q1("SELECT * FROM accounts WHERE id = ?", [req.body.accountId]);
+  if (!account) return res.status(404).json({ error: "Account not found" });
+  const existing = await q1(
+    "SELECT * FROM uploads WHERE clip_id = ? AND account_id = ?",
+    [clip.id, account.id]
+  );
+  if (existing?.status === "done") {
+    return res.status(400).json({ error: "Already posted - nothing to skip" });
+  }
+  await dbRun(
+    `INSERT INTO uploads (clip_id, account_id, platform, status, attempts, next_attempt_at, error)
+     VALUES (?, ?, ?, 'skipped', 0, NULL, NULL)
+     ON CONFLICT (clip_id, account_id) DO UPDATE SET
+       status = 'skipped', next_attempt_at = NULL, error = NULL`,
+    [clip.id, account.id, account.platform]
+  );
   res.json({ ok: true });
 }));
 

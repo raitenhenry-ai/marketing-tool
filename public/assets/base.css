@@ -311,6 +311,7 @@ textarea.input { resize: vertical; min-height: 74px; font-family: var(--mono); f
 }
 .badge .bdot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .badge.ready, .badge.done { background: var(--success-soft); color: var(--success); }
+.badge.skipped { background: var(--surface-3); color: var(--muted); }
 .badge.processing, .badge.uploading { background: var(--accent-soft); color: var(--accent-hover); }
 .badge.failed { background: var(--danger-soft); color: var(--danger); }
 .badge.pending, .badge.scheduled { background: var(--warning-soft); color: var(--warning); }

@@ -262,14 +262,14 @@ async function cadencePublish(account, now) {
      WHERE videos.status = 'ready' AND videos.publish_mode = 'auto'
        AND NOT EXISTS (
          SELECT 1 FROM uploads u WHERE u.clip_id = clips.id AND u.account_id = ?
-           AND (u.status IN ('done', 'uploading')
+           AND (u.status IN ('done', 'uploading', 'skipped')
                 OR (u.status = 'failed' AND (u.next_attempt_at IS NULL OR u.next_attempt_at > ?)))
        )
        AND NOT EXISTS (
          SELECT 1 FROM clips c2 WHERE c2.video_id = clips.video_id AND c2.part_number < clips.part_number
            AND NOT EXISTS (
              SELECT 1 FROM uploads u2 WHERE u2.clip_id = c2.id AND u2.account_id = ?
-               AND (u2.status = 'done' OR (u2.status = 'failed' AND u2.next_attempt_at IS NULL))
+               AND (u2.status IN ('done', 'skipped') OR (u2.status = 'failed' AND u2.next_attempt_at IS NULL))
            )
        )
      ORDER BY videos.created_at ASC, clips.part_number ASC LIMIT 1`,
