@@ -301,10 +301,13 @@ export function uploadChip(u) {
   const retry = status === "failed" && u.id
     ? `<button class="icon-btn" data-retry-upload="${u.id}" title="Retry this post now" style="width:22px;height:22px;vertical-align:middle">${icons.retry}</button>`
     : "";
+  const view = status === "done" && u.url
+    ? `<a class="icon-btn" href="${esc(u.url)}" target="_blank" rel="noopener" title="View the post on ${label}" style="width:22px;height:22px;vertical-align:middle">${icons.external}</a>`
+    : "";
   return `<span class="badge ${status}"${title}>
     <span class="pdot ${u.platform}" style="width:6px;height:6px;border-radius:2px"></span>
     ${label}${who ? ` · ${esc(who)}` : ""} — ${status}
-  </span>${retry}`;
+  </span>${view}${retry}`;
 }
 
 // Single-post retry works from any page that renders failed posts.

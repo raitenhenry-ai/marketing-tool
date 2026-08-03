@@ -13,6 +13,7 @@ import { deleteVideoFiles } from "../cleanup.js";
 import { authEnabled } from "../auth.js";
 import { refreshMetrics, metricsStatus } from "../metrics.js";
 import { platforms, textsFor, syncFacebookPages } from "../scheduler.js";
+import { postUrl } from "../postUrl.js";
 
 const PLATFORM_KEYS = Object.keys(platforms); // youtube, instagram, tiktok, facebook, x
 
@@ -137,13 +138,14 @@ router.get("/videos", wrap(async (req, res) => {
     );
     const clipsOut = [];
     for (const c of clips) {
-      const uploads = await q(
+      const uploads = (await q(
         `SELECT uploads.platform, uploads.status, uploads.attempts, uploads.error,
-                uploads.platform_video_id, uploads.uploaded_at, accounts.display_name AS account_name
+                uploads.platform_video_id, uploads.public_post_id, uploads.uploaded_at,
+                accounts.display_name AS account_name
          FROM uploads LEFT JOIN accounts ON accounts.id = uploads.account_id
          WHERE uploads.clip_id = ?`,
         [c.id]
-      );
+      )).map((u) => ({ ...u, url: u.status === "done" ? postUrl(u) : null }));
       clipsOut.push({
         id: c.id,
         part: c.part_number,
@@ -217,6 +219,7 @@ router.get("/videos/:id", wrap(async (req, res) => {
         attempts: u.attempts,
         error: u.error,
         platformVideoId: u.platform_video_id,
+        url: u.status === "done" ? postUrl(u) : null,
         uploadedAt: u.uploaded_at ? Number(u.uploaded_at) : null,
         nextAttemptAt: u.next_attempt_at ? Number(u.next_attempt_at) : null,
         metrics: u.metrics_json ? JSON.parse(u.metrics_json) : null,
@@ -340,16 +343,16 @@ router.get("/stats", wrap(async (req, res) => {
     [now]
   );
 
-  const recentUploads = await q(
+  const recentUploads = (await q(
     `SELECT uploads.platform, uploads.status, uploads.error, uploads.uploaded_at,
-            uploads.platform_video_id, accounts.display_name AS account_name,
+            uploads.platform_video_id, uploads.public_post_id, accounts.display_name AS account_name,
             clips.part_number, clips.total_parts, videos.id AS video_id, videos.title
      FROM uploads
      LEFT JOIN accounts ON accounts.id = uploads.account_id
      JOIN clips ON clips.id = uploads.clip_id
      JOIN videos ON videos.id = clips.video_id
      ORDER BY COALESCE(uploads.uploaded_at, 0) DESC, uploads.id DESC LIMIT 8`
-  );
+  )).map((u) => ({ ...u, url: u.status === "done" ? postUrl(u) : null }));
 
   const metricRows = await q(
     "SELECT metrics_json FROM uploads WHERE status = 'done' AND metrics_json IS NOT NULL"
@@ -415,7 +418,8 @@ router.get("/schedule", wrap(async (req, res) => {
 
   const history = (await q(
     `SELECT uploads.id AS upload_id, uploads.platform, uploads.status, uploads.error, uploads.uploaded_at,
-            uploads.attempts, uploads.platform_video_id, accounts.display_name AS account_name,
+            uploads.attempts, uploads.platform_video_id, uploads.public_post_id,
+            accounts.display_name AS account_name,
             clips.part_number, clips.total_parts, videos.id AS video_id, videos.title
      FROM uploads
      LEFT JOIN accounts ON accounts.id = uploads.account_id
@@ -423,7 +427,11 @@ router.get("/schedule", wrap(async (req, res) => {
      JOIN videos ON videos.id = clips.video_id
      WHERE uploads.status IN ('done', 'failed')
      ORDER BY COALESCE(uploads.uploaded_at, 0) DESC, uploads.id DESC LIMIT 100`
-  )).map((u) => ({ ...u, uploaded_at: u.uploaded_at ? Number(u.uploaded_at) : null }));
+  )).map((u) => ({
+    ...u,
+    uploaded_at: u.uploaded_at ? Number(u.uploaded_at) : null,
+    url: u.status === "done" ? postUrl(u) : null,
+  }));
 
   res.json({ upcoming, history });
 }));
@@ -485,6 +493,7 @@ router.get("/analytics", wrap(async (req, res) => {
       part: row.part_number,
       totalParts: row.total_parts,
       genTitle: row.gen_title,
+      url: postUrl(row),
       uploadedAt: row.uploaded_at ? Number(row.uploaded_at) : null,
       metrics,
     });

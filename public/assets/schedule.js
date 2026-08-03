@@ -97,6 +97,9 @@ function renderHistory() {
           </div>
           <div class="tl-side">
             <span class="badge ${u.status}"><span class="bdot"></span>${u.status}</span>
+            ${u.url
+              ? `<a class="icon-btn" href="${esc(u.url)}" target="_blank" rel="noopener" title="View the post on ${PLATFORMS[u.platform] || u.platform}">${icons.external}</a>`
+              : ""}
             ${u.status === "failed" && u.upload_id
               ? `<button class="icon-btn" data-retry-upload="${u.upload_id}" title="Retry this post now">${icons.retry}</button>`
               : ""}

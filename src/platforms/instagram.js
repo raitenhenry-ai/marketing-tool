@@ -114,6 +114,13 @@ async function waitForContainer(containerId, accessToken) {
   throw new Error("Instagram media container timed out");
 }
 
+// Public link to a published post (used for "view post" links in the UI).
+export async function resolvePostId(account, mediaId) {
+  const res = await fetch(`${GRAPH}/${mediaId}?fields=permalink&access_token=${account.access_token}`);
+  const data = await res.json();
+  return res.ok ? data.permalink || null : null;
+}
+
 // Returns a map of mediaId -> {views, likes, comments, shares, saves}.
 // Insights are fetched per media; failures on individual posts are skipped.
 export async function fetchStats(account, mediaIds) {

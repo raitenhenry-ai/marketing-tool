@@ -58,18 +58,23 @@ async function refreshForAccount(account, rows) {
   if (!platform?.fetchStats) return 0;
   let updated = 0;
 
-  if (account.platform === "tiktok") {
-    // TikTok's publish flow returns an internal id; resolve the public post
-    // id first for any upload that doesn't have one yet.
+  // Backfill public post ids/permalinks (TikTok's public id, Instagram and
+  // Threads permalinks) for any upload that doesn't have one yet.
+  if (platform.resolvePostId) {
     for (const row of rows) {
       if (!row.public_post_id) {
-        const postId = await platform.resolvePostId(account, row.platform_video_id);
-        if (postId) {
-          await dbRun("UPDATE uploads SET public_post_id = ? WHERE id = ?", [postId, row.id]);
-          row.public_post_id = postId;
-        }
+        try {
+          const postId = await platform.resolvePostId(account, row.platform_video_id);
+          if (postId) {
+            await dbRun("UPDATE uploads SET public_post_id = ? WHERE id = ?", [postId, row.id]);
+            row.public_post_id = postId;
+          }
+        } catch { /* next cycle */ }
       }
     }
+  }
+
+  if (account.platform === "tiktok") {
     const resolvable = rows.filter((r) => r.public_post_id);
     if (resolvable.length) {
       const stats = await platform.fetchStats(account, resolvable.map((r) => r.public_post_id));

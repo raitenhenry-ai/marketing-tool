@@ -156,6 +156,23 @@ async function publish(accountRow, clip, video) {
     console.log(
       `[scheduler] clip ${clip.id} (part ${clip.part_number}) -> ${account.platform}/${account.display_name} OK`
     );
+
+    // Grab the public permalink/post id right away where the platform
+    // supports it, so "view post" links appear immediately (the metrics job
+    // backfills any that aren't resolvable yet, e.g. TikTok mid-processing).
+    if (platforms[account.platform].resolvePostId) {
+      try {
+        const current = await freshAccount(account.id);
+        const publicId = await platforms[account.platform].resolvePostId(
+          current, String(platformVideoId ?? ""));
+        if (publicId) {
+          await run(
+            "UPDATE uploads SET public_post_id = ? WHERE clip_id = ? AND account_id = ?",
+            [String(publicId), clip.id, account.id]
+          );
+        }
+      } catch { /* metrics backfills later */ }
+    }
   } catch (err) {
     const row = await q1(
       "SELECT attempts FROM uploads WHERE clip_id = ? AND account_id = ?",

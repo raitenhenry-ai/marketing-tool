@@ -133,6 +133,13 @@ export async function uploadClip(account, { publicUrl, caption }) {
 }
 
 // Returns a map of mediaId -> {views, likes, comments, shares}.
+// Public link to a published post (used for "view post" links in the UI).
+export async function resolvePostId(account, mediaId) {
+  const res = await fetch(`${GRAPH}/${mediaId}?fields=permalink&access_token=${account.access_token}`);
+  const data = await res.json();
+  return res.ok ? data.permalink || null : null;
+}
+
 export async function fetchStats(account, mediaIds) {
   const stats = {};
   for (const id of mediaIds) {

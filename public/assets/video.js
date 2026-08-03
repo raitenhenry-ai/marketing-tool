@@ -47,10 +47,10 @@ function clipCard(c, video) {
     : "";
 
   const links = c.uploads
-    .filter((u) => u.platform === "youtube" && u.status === "done" && u.platformVideoId)
-    .map((u) => `<a href="https://youtu.be/${encodeURIComponent(u.platformVideoId)}" target="_blank" rel="noopener">
-        watch on YouTube ${icons.external}</a>`)
-    .join("");
+    .filter((u) => u.status === "done" && u.url)
+    .map((u) => `<a href="${esc(u.url)}" target="_blank" rel="noopener">
+        view on ${PLATFORMS[u.platform] || u.platform} ${icons.external}</a>`)
+    .join(" · ");
 
   return `<div class="clip-card">
     <div class="clip-player">
