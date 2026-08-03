@@ -222,7 +222,7 @@ $("#upload-btn").addEventListener("click", () => {
     if (xhr.status >= 200 && xhr.status < 300) {
       const { id } = JSON.parse(xhr.responseText);
       toast("Uploaded — splitting into clips now");
-      location.href = `/video.html?id=${id}`;
+      location.href = `video.html?id=${id}`;
     } else {
       let msg = `Upload failed (${xhr.status})`;
       try { msg = JSON.parse(xhr.responseText).error || msg; } catch {}
