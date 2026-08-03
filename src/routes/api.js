@@ -394,6 +394,93 @@ router.get("/stats", wrap(async (req, res) => {
   });
 }));
 
+// Full per-account picture: every planned post with its (fore)casted time,
+// plus everything already posted, per connected account.
+router.get("/schedule/accounts", wrap(async (req, res) => {
+  const now = Date.now();
+  const accounts = await q("SELECT * FROM accounts ORDER BY platform ASC, display_name ASC");
+  const result = [];
+
+  for (const a of accounts) {
+    const gapMs = Number(a.min_gap_hours || 0) * 3600 * 1000;
+
+    // Clips still owed to this account: assigned video, not successfully
+    // posted here yet; failed posts with a pending retry count as upcoming.
+    const pending = await q(
+      `SELECT clips.id, clips.part_number, clips.total_parts, clips.scheduled_at,
+              clips.gen_title, videos.id AS video_id, videos.title,
+              u.status AS upload_status, u.next_attempt_at
+       FROM clips
+       JOIN videos ON videos.id = clips.video_id
+       JOIN video_accounts va ON va.video_id = videos.id AND va.account_id = ?
+       LEFT JOIN uploads u ON u.clip_id = clips.id AND u.account_id = ?
+       WHERE videos.status = 'ready' AND videos.publish_mode = 'auto'
+         AND (u.id IS NULL OR (u.status = 'failed' AND u.next_attempt_at IS NOT NULL))
+       ORDER BY videos.created_at ASC, clips.part_number ASC`,
+      [a.id, a.id]
+    );
+
+    const shape = (c, plannedAt, estimated) => ({
+      clipId: c.id,
+      videoId: c.video_id,
+      videoTitle: c.title,
+      genTitle: c.gen_title,
+      part: c.part_number,
+      totalParts: c.total_parts,
+      plannedAt,
+      estimated,
+      retry: c.upload_status === "failed",
+    });
+
+    let upcoming;
+    if (gapMs > 0) {
+      // Cadence account: forecast sequential slots from its last post.
+      const last = await q1(
+        "SELECT MAX(uploaded_at) AS t FROM uploads WHERE account_id = ? AND status = 'done'",
+        [a.id]
+      );
+      let cursor = Math.max(now, Number(last?.t || 0) + gapMs);
+      upcoming = pending.map((c) => {
+        const planned = Math.max(cursor, Number(c.next_attempt_at || 0));
+        cursor = planned + gapMs;
+        return shape(c, planned, true);
+      });
+    } else {
+      // Default schedule: the clip's own timeline slot (or its retry time).
+      upcoming = pending.map((c) =>
+        shape(c, Math.max(Number(c.scheduled_at), Number(c.next_attempt_at || 0)), false));
+    }
+
+    const posted = (await q(
+      `SELECT uploads.status, uploads.error, uploads.uploaded_at, uploads.attempts,
+              uploads.platform, uploads.platform_video_id, uploads.public_post_id,
+              clips.part_number AS part, clips.total_parts, clips.gen_title,
+              videos.id AS video_id, videos.title AS video_title
+       FROM uploads
+       JOIN clips ON clips.id = uploads.clip_id
+       JOIN videos ON videos.id = clips.video_id
+       WHERE uploads.account_id = ? AND uploads.status IN ('done', 'failed')
+       ORDER BY COALESCE(uploads.uploaded_at, 0) DESC, uploads.id DESC LIMIT 60`,
+      [a.id]
+    )).map((u) => ({
+      ...u,
+      uploaded_at: u.uploaded_at ? Number(u.uploaded_at) : null,
+      url: u.status === "done" ? postUrl({ ...u, account_name: a.display_name }) : null,
+    }));
+
+    result.push({
+      id: a.id,
+      platform: a.platform,
+      name: a.display_name,
+      minGapHours: Number(a.min_gap_hours || 0),
+      upcoming,
+      posted,
+    });
+  }
+
+  res.json({ now, accounts: result });
+}));
+
 router.get("/schedule", wrap(async (req, res) => {
   const clips = await q(
     `SELECT clips.id, clips.part_number, clips.total_parts, clips.scheduled_at,

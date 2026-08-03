@@ -19,13 +19,22 @@ $("#retry-failed").addEventListener("click", async (e) => {
 });
 
 let data = null;
+let byAccount = null;
 let view = "upcoming";
+let platformFilter = "all";
 
 $("#view-tabs").addEventListener("click", (e) => {
   const tab = e.target.closest(".tab");
   if (!tab) return;
   view = tab.dataset.view;
-  $$(".tab").forEach((t) => t.classList.toggle("active", t === tab));
+  $$("#view-tabs .tab").forEach((t) => t.classList.toggle("active", t === tab));
+  render();
+});
+
+document.addEventListener("click", (e) => {
+  const chip = e.target.closest("[data-pf]");
+  if (!chip) return;
+  platformFilter = chip.dataset.pf;
   render();
 });
 
@@ -108,18 +117,95 @@ function renderHistory() {
     </div>`).join("");
 }
 
+function gapText(h) {
+  if (h <= 0) return "default schedule — each part at its timeline slot";
+  if (h < 1) return `posts every ${Math.round(h * 60)} min`;
+  return h === 1 ? "posts every hour" : `posts every ${h} hours`;
+}
+
+function accountCard(a) {
+  const now = byAccount.now;
+  const upcoming = a.upcoming.slice(0, 10);
+  const posted = a.posted.slice(0, 10);
+  const doneCount = a.posted.filter((p) => p.status === "done").length;
+  return `<div class="card mb-16">
+    <div class="flex" style="margin-bottom:6px">
+      <span class="platform-logo ${a.platform}">${icons[a.platform]}</span>
+      <div>
+        <div class="row-title">${esc(a.name || "account")}</div>
+        <div class="row-sub">${PLATFORMS[a.platform] || a.platform} · ${gapText(a.minGapHours)}</div>
+      </div>
+      <div class="spacer"></div>
+      <span class="badge scheduled"><span class="bdot"></span>${a.upcoming.length} queued</span>
+      <span class="badge done"><span class="bdot"></span>${doneCount} posted</span>
+    </div>
+    <div class="acct-grid">
+      <div>
+        <div class="mini-head">Coming up${a.minGapHours > 0 ? ` <span style="text-transform:none;font-weight:400">(≈ forecast at this cadence)</span>` : ""}</div>
+        ${upcoming.length ? upcoming.map((u) => `
+          <div class="mini-row">
+            <span class="mini-time">${u.plannedAt <= now
+              ? "due now"
+              : `${u.estimated ? "≈ " : ""}${fmtDateTime(u.plannedAt)}`}</span>
+            <span class="truncate"><a href="video.html?id=${u.videoId}">${esc(u.genTitle || u.videoTitle)}</a></span>
+            <span class="muted nowrap">Part ${u.part}/${u.totalParts}${u.retry ? " · retry" : ""}</span>
+          </div>`).join("") : `<div class="mini-row muted">nothing queued</div>`}
+        ${a.upcoming.length > 10 ? `<div class="mini-row muted">+ ${a.upcoming.length - 10} more</div>` : ""}
+      </div>
+      <div>
+        <div class="mini-head">Posted</div>
+        ${posted.length ? posted.map((u) => `
+          <div class="mini-row">
+            <span class="mini-time">${u.uploaded_at ? fmtDateTime(u.uploaded_at) : "—"}</span>
+            <span class="truncate"><a href="video.html?id=${u.video_id}">${esc(u.gen_title || u.video_title)}</a></span>
+            <span class="muted nowrap">Part ${u.part}/${u.total_parts}</span>
+            <span class="badge ${u.status}" style="margin-left:auto"><span class="bdot"></span>${u.status}</span>
+            ${u.url ? `<a class="icon-btn" href="${esc(u.url)}" target="_blank" rel="noopener" title="View the post">${icons.external}</a>` : ""}
+          </div>`).join("") : `<div class="mini-row muted">nothing posted yet</div>`}
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderAccounts() {
+  if (!byAccount) return `<div class="card"><div class="skeleton" style="height:200px"></div></div>`;
+  if (!byAccount.accounts.length) {
+    return `<div class="card"><div class="empty">${icons.accounts}
+      <h3>No accounts connected</h3>
+      <p>Connect accounts and every one gets its own queue and history here.</p>
+      <a class="btn" href="accounts.html">Open Accounts</a></div></div>`;
+  }
+  const present = [...new Set(byAccount.accounts.map((a) => a.platform))];
+  const chips = `<div class="tabs mb-16">
+    <button class="tab ${platformFilter === "all" ? "active" : ""}" data-pf="all">All platforms</button>
+    ${present.map((pf) => `
+      <button class="tab ${platformFilter === pf ? "active" : ""}" data-pf="${pf}">
+        <span class="pdot ${pf}"></span> ${PLATFORMS[pf] || pf}
+      </button>`).join("")}
+  </div>`;
+  const accs = byAccount.accounts.filter((a) => platformFilter === "all" || a.platform === platformFilter);
+  return chips + (accs.length
+    ? accs.map(accountCard).join("")
+    : `<div class="card"><div class="empty"><h3>No accounts on this platform</h3></div></div>`);
+}
+
 function render() {
   if (!data) return;
   const now = Date.now();
   $("#count-upcoming").textContent =
     data.upcoming.filter((c) => c.scheduled_at > now).length || "";
   $("#count-history").textContent = data.history.length || "";
-  $("#schedule-host").innerHTML = view === "upcoming" ? renderUpcoming() : renderHistory();
+  $("#count-accounts").textContent = byAccount?.accounts.length || "";
+  $("#schedule-host").innerHTML =
+    view === "upcoming" ? renderUpcoming() : view === "accounts" ? renderAccounts() : renderHistory();
 }
 
 async function load() {
   try {
-    data = await api("/api/schedule");
+    [data, byAccount] = await Promise.all([
+      api("/api/schedule"),
+      api("/api/schedule/accounts"),
+    ]);
     render();
   } catch { /* auth redirect */ }
 }
