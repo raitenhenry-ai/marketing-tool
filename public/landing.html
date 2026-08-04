@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clint — turn long videos into short-form content everywhere</title>
+  <meta name="description" content="Upload one long video. Clint clips it, captions it, titles it with AI, and publishes it to YouTube Shorts, Instagram Reels, TikTok, Facebook, X, Threads, Pinterest and LinkedIn on your schedule.">
+  <script>document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";</script>
+  <style>
+    :root{
+      --bg:#0a0d13;--surface:#10141c;--surface-2:#161b26;--border:#222a3a;--text:#e7eaf1;
+      --muted:#8b94a7;--accent:#3b76f0;--accent-2:#7a4ff0;--success:#3fbf7f;
+    }
+    :root[data-theme="light"]{
+      --bg:#f6f8fc;--surface:#ffffff;--surface-2:#eef1f7;--border:#dde3ee;--text:#17203a;
+      --muted:#5d6780;--accent:#2e63d8;--accent-2:#6a41e0;--success:#188653;
+    }
+    *{box-sizing:border-box;margin:0}
+    html{scroll-behavior:smooth}
+    body{font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+    a{color:inherit;text-decoration:none}
+    .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+
+    nav{position:sticky;top:0;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);
+        border-bottom:1px solid var(--border);z-index:10}
+    .nav-in{display:flex;align-items:center;gap:26px;height:62px}
+    .logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.05rem}
+    .mark{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent-2));
+          display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:.9rem}
+    .nav-links{display:flex;gap:22px;font-size:.92rem;color:var(--muted)}
+    .nav-links a:hover{color:var(--text)}
+    .spacer{flex:1}
+    .btn{display:inline-block;padding:10px 18px;border-radius:9px;font-weight:600;font-size:.95rem;border:1px solid transparent}
+    .btn-primary{background:var(--accent);color:#fff}
+    .btn-primary:hover{filter:brightness(1.08)}
+    .btn-ghost{border-color:var(--border);color:var(--text)}
+    .btn-ghost:hover{background:var(--surface-2)}
+    .btn-lg{padding:13px 26px;font-size:1rem;border-radius:11px}
+
+    .hero{padding:84px 0 40px;text-align:center}
+    .hero h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.15;letter-spacing:-.02em;font-weight:800;max-width:800px;margin:0 auto}
+    .hero h1 em{font-style:normal;background:linear-gradient(90deg,var(--accent),var(--accent-2));
+                -webkit-background-clip:text;background-clip:text;color:transparent}
+    .hero p{max-width:620px;margin:20px auto 0;color:var(--muted);font-size:1.12rem}
+    .hero-cta{margin-top:32px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+    .hero-note{margin-top:14px;font-size:.85rem;color:var(--muted)}
+
+    .platforms{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:44px 0 0}
+    .pchip{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);
+           border-radius:999px;padding:7px 14px;font-size:.85rem;color:var(--muted);font-weight:600}
+    .pdot{width:8px;height:8px;border-radius:3px}
+
+    .mock{max-width:760px;margin:56px auto 0;background:var(--surface);border:1px solid var(--border);
+          border-radius:16px;padding:20px 22px;text-align:left;box-shadow:0 30px 80px rgba(0,0,0,.18)}
+    .mock-head{display:flex;align-items:center;gap:8px;margin-bottom:14px;color:var(--muted);font-size:.8rem;
+               text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+    .mock-dot{width:9px;height:9px;border-radius:50%;background:var(--success)}
+    .mrow{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--border);font-size:.9rem}
+    .mtime{font-family:ui-monospace,Menlo,monospace;font-size:.78rem;color:var(--muted);min-width:86px}
+    .mbadge{margin-left:auto;font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:999px}
+    .b-live{background:rgba(63,191,127,.14);color:var(--success)}
+    .b-next{background:rgba(59,118,240,.13);color:var(--accent)}
+
+    section{padding:76px 0}
+    .sec-head{text-align:center;max-width:640px;margin:0 auto 48px}
+    .sec-head h2{font-size:clamp(1.5rem,3.4vw,2.1rem);letter-spacing:-.01em}
+    .sec-head p{color:var(--muted);margin-top:10px}
+
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+    .feat{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px}
+    .feat .ic{width:38px;height:38px;border-radius:10px;background:var(--surface-2);display:flex;align-items:center;
+              justify-content:center;font-size:1.1rem;margin-bottom:14px}
+    .feat h3{font-size:1.02rem;margin-bottom:6px}
+    .feat p{font-size:.9rem;color:var(--muted)}
+
+    .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;counter-reset:step}
+    .step{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:26px;position:relative}
+    .step::before{counter-increment:step;content:counter(step);position:absolute;top:-14px;left:22px;width:28px;height:28px;
+                  border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;
+                  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.85rem}
+    .step h3{font-size:1rem;margin:6px 0 6px}
+    .step p{font-size:.9rem;color:var(--muted)}
+
+    .cta-card{background:linear-gradient(135deg,var(--accent),var(--accent-2));border-radius:20px;padding:56px 30px;
+              text-align:center;color:#fff}
+    .cta-card h2{font-size:clamp(1.5rem,3.4vw,2.1rem)}
+    .cta-card p{opacity:.85;margin:10px auto 26px;max-width:480px}
+    .cta-card .btn{background:#fff;color:#1b2334}
+
+    footer{border-top:1px solid var(--border);padding:34px 0;color:var(--muted);font-size:.88rem}
+    .foot{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+    .foot a:hover{color:var(--text)}
+
+    @media (max-width:840px){.grid,.steps{grid-template-columns:1fr}.nav-links{display:none}}
+  </style>
+</head>
+<body>
+
+<nav><div class="wrap nav-in">
+  <a class="logo" href="/"><span class="mark">▶</span> Clint</a>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#how">How it works</a>
+    <a href="#pricing">Pricing</a>
+  </div>
+  <div class="spacer"></div>
+  <a class="btn btn-ghost" href="/login">Sign in</a>
+  <a class="btn btn-primary" href="/signup">Get started</a>
+</div></nav>
+
+<header class="hero wrap">
+  <h1>One long video in.<br><em>A week of short-form content</em> out.</h1>
+  <p>Clint clips your videos into ready-to-post shorts — AI captions, titles and hashtags included —
+     then publishes them to every platform on a schedule you control.</p>
+  <div class="hero-cta">
+    <a class="btn btn-primary btn-lg" href="/signup">Start for free</a>
+    <a class="btn btn-ghost btn-lg" href="#how">See how it works</a>
+  </div>
+  <div class="hero-note">No credit card required · Free during early access</div>
+
+  <div class="platforms">
+    <span class="pchip"><span class="pdot" style="background:#ff5252"></span>YouTube Shorts</span>
+    <span class="pchip"><span class="pdot" style="background:#d6559f"></span>Instagram Reels</span>
+    <span class="pchip"><span class="pdot" style="background:#43d3d3"></span>TikTok</span>
+    <span class="pchip"><span class="pdot" style="background:#5b8def"></span>Facebook</span>
+    <span class="pchip"><span class="pdot" style="background:#9aa3b2"></span>X</span>
+    <span class="pchip"><span class="pdot" style="background:#c8a2e8"></span>Threads</span>
+    <span class="pchip"><span class="pdot" style="background:#e05c6e"></span>Pinterest</span>
+    <span class="pchip"><span class="pdot" style="background:#5a9bd8"></span>LinkedIn</span>
+  </div>
+
+  <div class="mock">
+    <div class="mock-head"><span class="mock-dot"></span> Publishing queue — live</div>
+    <div class="mrow" style="border-top:0"><span class="mtime">2:00 PM</span> Part 1 · "The 3-step morning routine" <span class="mbadge b-live">posted · 5 platforms</span></div>
+    <div class="mrow"><span class="mtime">4:30 PM</span> Part 2 · "Why most people quit here" <span class="mbadge b-next">scheduled</span></div>
+    <div class="mrow"><span class="mtime">7:00 PM</span> Part 3 · "The one habit that stuck" <span class="mbadge b-next">scheduled</span></div>
+  </div>
+</header>
+
+<section id="features"><div class="wrap">
+  <div class="sec-head">
+    <h2>Everything between "upload" and "posted"</h2>
+    <p>Clint handles the whole pipeline so a single long-form video becomes a steady stream of native-feeling shorts.</p>
+  </div>
+  <div class="grid">
+    <div class="feat"><div class="ic">✂️</div><h3>Smart clipping</h3>
+      <p>Videos are split into perfectly-sized vertical clips with blurred backgrounds — automatically, or at the exact cut points you choose.</p></div>
+    <div class="feat"><div class="ic">💬</div><h3>Word-by-word captions</h3>
+      <p>Karaoke-style subtitles generated from your audio, timed to the word and positioned clear of every platform's UI.</p></div>
+    <div class="feat"><div class="ic">✨</div><h3>AI titles &amp; hashtags</h3>
+      <p>Every clip gets its own algorithm-friendly title, description and hashtag set written from what's actually said in it.</p></div>
+    <div class="feat"><div class="ic">🎨</div><h3>Your branding, your text</h3>
+      <p>Customize the overlay text, part labels, watermark and clip length. Captions and templates bend to your brand — not the other way around.</p></div>
+    <div class="feat"><div class="ic">📅</div><h3>Schedules per account</h3>
+      <p>Connect multiple accounts per platform and give each its own posting rhythm — every 30 minutes on X, every 2 hours on YouTube, you decide.</p></div>
+    <div class="feat"><div class="ic">📊</div><h3>All your numbers, one page</h3>
+      <p>Views, likes, comments and shares roll in from every platform and account into a single analytics view — per video, per account, per post.</p></div>
+  </div>
+</div></section>
+
+<section id="how" style="background:var(--surface-2)"><div class="wrap">
+  <div class="sec-head">
+    <h2>How it works</h2>
+    <p>Three steps. The first one is the only one that needs you.</p>
+  </div>
+  <div class="steps">
+    <div class="step"><h3>Upload your video</h3>
+      <p>Drop in a talking-head video, a stream VOD, a tutorial — anything long-form. Pick auto-publish or download-only.</p></div>
+    <div class="step"><h3>Clint does the work</h3>
+      <p>Clipping, captions, titles, hashtags and scheduling happen automatically. Review the clips, tweak the cuts, or just let it run.</p></div>
+    <div class="step"><h3>Posted everywhere, tracked</h3>
+      <p>Clips go out across your connected accounts on schedule, and the analytics flow back in — with links to every live post.</p></div>
+  </div>
+</div></section>
+
+<section id="pricing"><div class="wrap">
+  <div class="cta-card">
+    <h2>Free while in early access</h2>
+    <p>We're onboarding creators in batches while we scale up processing capacity. Grab a spot — early accounts keep their perks.</p>
+    <a class="btn btn-lg" href="/signup">Create your account</a>
+  </div>
+</div></section>
+
+<footer><div class="wrap foot">
+  <span>© 2026 Clint · clint.build</span>
+  <span class="spacer"></span>
+  <a href="/terms">Terms</a>
+  <a href="/privacy">Privacy</a>
+  <a href="/login">Sign in</a>
+</div></footer>
+
+</body>
+</html>

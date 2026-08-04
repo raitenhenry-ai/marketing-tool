@@ -79,6 +79,13 @@ CREATE TABLE IF NOT EXISTS uploads (
   public_post_id TEXT,
   UNIQUE (clip_id, account_id)
 );
+CREATE TABLE IF NOT EXISTS users (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'member',
+  created_at BIGINT NOT NULL
+);
 `;
 
 if (config.databaseUrl) {
@@ -272,5 +279,17 @@ CREATE TABLE IF NOT EXISTS uploads (
       db.exec("ALTER TABLE accounts ADD COLUMN min_gap_hours REAL NOT NULL DEFAULT 0");
     }
     db.pragma("user_version = 6");
+  }
+
+  // v6 -> v7: user accounts (email+password sign-in and public signups).
+  if (version < 7) {
+    db.exec(`CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'member',
+      created_at INTEGER NOT NULL
+    )`);
+    db.pragma("user_version = 7");
   }
 }
