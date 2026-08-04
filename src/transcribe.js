@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import config from "./config.js";
+import { fixBrandName } from "./brand.js";
 
 export function subtitlesEnabled() {
   return config.subtitles && Boolean(config.openaiApiKey);
@@ -35,7 +36,7 @@ async function transcribe(audioPath) {
   const data = await res.json();
   if (!res.ok) throw new Error(`Transcription failed (${res.status}): ${JSON.stringify(data)}`);
   return (data.words || [])
-    .map((w) => ({ word: String(w.word || "").trim(), start: w.start, end: w.end }))
+    .map((w) => ({ word: fixBrandName(String(w.word || "").trim()), start: w.start, end: w.end }))
     .filter((w) => w.word);
 }
 
