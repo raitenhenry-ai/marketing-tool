@@ -60,15 +60,23 @@ async function load() {
     ? `${t.posts - t.withMetrics} post(s) have no metrics yet (accounts may need reconnecting for the new permissions)`
     : "";
 
-  $("#account-rows").innerHTML = data.accounts.map((a) => `
+  // "—" = no data fetched (new post, platform without stats, or failed
+  // fetch) — very different from a real measured zero.
+  const NO_STATS = { linkedin: "LinkedIn doesn't expose stats for personal posts", x: "X stats need API credits" };
+  const cell = (has, v) => `<td class="mono">${has ? fmtCompact(v) : "—"}</td>`;
+  $("#account-rows").innerHTML = data.accounts.map((a) => {
+    const has = a.withMetrics > 0;
+    const note = !has && NO_STATS[a.platform]
+      ? NO_STATS[a.platform]
+      : `${a.withMetrics}/${a.posts} posts measured${a.lastAt ? ` · updated ${relTime(a.lastAt)}` : ""}`;
+    return `
     <tr>
-      <td>${platformChip(a.platform, a.accountName)}</td>
+      <td>${platformChip(a.platform, a.accountName)}
+        <div class="row-sub" style="margin-top:3px">${note}</div></td>
       <td class="mono">${a.posts}</td>
-      <td class="mono">${fmtCompact(a.views)}</td>
-      <td class="mono">${fmtCompact(a.likes)}</td>
-      <td class="mono">${fmtCompact(a.comments)}</td>
-      <td class="mono">${fmtCompact(a.shares + a.saves)}</td>
-    </tr>`).join("");
+      ${cell(has, a.views)}${cell(has, a.likes)}${cell(has, a.comments)}${cell(has, a.shares + a.saves)}
+    </tr>`;
+  }).join("");
   $("#account-empty").innerHTML = data.accounts.length ? "" :
     `<div class="empty">${icons.accounts}<h3>No published posts yet</h3>
      <p>Once clips publish, per-account performance shows up here.</p></div>`;
@@ -77,13 +85,10 @@ async function load() {
     <tr>
       <td>
         <div class="row-title"><a href="video.html?id=${v.videoId}">${esc(v.title)}</a></div>
-        <div class="row-sub">${v.uploads.length} post(s) across ${new Set(v.uploads.map((u) => u.accountName)).size} account(s)</div>
+        <div class="row-sub">${v.uploads.length} post(s) across ${new Set(v.uploads.map((u) => u.accountName)).size} account(s) · ${v.withMetrics}/${v.posts} measured</div>
       </td>
       <td class="mono">${v.posts}</td>
-      <td class="mono">${fmtCompact(v.views)}</td>
-      <td class="mono">${fmtCompact(v.likes)}</td>
-      <td class="mono">${fmtCompact(v.comments)}</td>
-      <td class="mono">${fmtCompact(v.shares + v.saves)}</td>
+      ${cell(v.withMetrics > 0, v.views)}${cell(v.withMetrics > 0, v.likes)}${cell(v.withMetrics > 0, v.comments)}${cell(v.withMetrics > 0, v.shares + v.saves)}
     </tr>`).join("");
   $("#video-empty").innerHTML = data.videos.length ? "" :
     `<div class="empty">${icons.videos}<h3>Nothing published yet</h3>

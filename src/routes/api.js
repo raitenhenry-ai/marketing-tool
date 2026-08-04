@@ -559,20 +559,25 @@ router.get("/analytics", wrap(async (req, res) => {
     if (!accounts.has(row.account_id)) {
       accounts.set(row.account_id, {
         accountId: row.account_id, platform: row.platform,
-        accountName: row.account_name, posts: 0, ...EMPTY,
+        accountName: row.account_name, posts: 0, withMetrics: 0, lastAt: null, ...EMPTY,
       });
     }
     const acc = accounts.get(row.account_id);
     acc.posts++;
+    if (metrics) {
+      acc.withMetrics++;
+      acc.lastAt = Math.max(acc.lastAt || 0, Number(row.metrics_at) || 0) || acc.lastAt;
+    }
     addInto(acc, metrics);
 
     if (!videos.has(row.video_id)) {
       videos.set(row.video_id, {
-        videoId: row.video_id, title: row.video_title, posts: 0, ...EMPTY, uploads: [],
+        videoId: row.video_id, title: row.video_title, posts: 0, withMetrics: 0, ...EMPTY, uploads: [],
       });
     }
     const vid = videos.get(row.video_id);
     vid.posts++;
+    if (metrics) vid.withMetrics++;
     addInto(vid, metrics);
     vid.uploads.push({
       platform: row.platform,
