@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Analytics · UGC Studio</title>
+  <script>document.documentElement.dataset.theme = localStorage.getItem("ugc-theme") || "light";</script>
+  <link rel="stylesheet" href="ugc.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside id="sidebar"></aside>
+    <div class="main">
+      <header id="topbar"></header>
+
+      <div class="layout single">
+        <main class="content">
+
+          <div class="stats" id="stat-tiles">
+            <div class="stat"><div class="stat-head"><span class="stat-ico dark" data-ico="film"></span> Videos Created</div><div class="stat-value">—</div></div>
+            <div class="stat"><div class="stat-head"><span class="stat-ico purple" data-ico="send"></span> Posts Published</div><div class="stat-value">—</div></div>
+            <div class="stat"><div class="stat-head"><span class="stat-ico blue" data-ico="alert"></span> Failed Posts</div><div class="stat-value">—</div></div>
+            <div class="stat"><div class="stat-head"><span class="stat-ico green" data-ico="check"></span> Success Rate</div><div class="stat-value">—</div></div>
+          </div>
+
+          <section class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Performance by platform</div>
+                <div class="card-sub">Where your UGC videos actually landed</div>
+              </div>
+            </div>
+            <div id="platform-table"><div class="empty small">Loading…</div></div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">All posts</div>
+                <div class="card-sub" id="posts-hint"></div>
+              </div>
+            </div>
+            <div class="table-wrap" id="posts-table"><div class="empty small">Loading…</div></div>
+          </section>
+
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="analytics.js"></script>
+</body>
+</html>

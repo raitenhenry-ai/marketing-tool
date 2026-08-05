@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trending Styles · UGC Studio</title>
+  <script>document.documentElement.dataset.theme = localStorage.getItem("ugc-theme") || "light";</script>
+  <link rel="stylesheet" href="ugc.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside id="sidebar"></aside>
+    <div class="main">
+      <header id="topbar"></header>
+
+      <div class="layout single">
+        <main class="content">
+          <section class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">All video styles</div>
+                <div class="card-sub">Every angle the studio can shoot your product from —
+                  pick one and it shapes the script, pacing and caption.</div>
+              </div>
+              <div class="tabs">
+                <button class="tab on">TikTok</button>
+                <button class="tab">Instagram</button>
+              </div>
+            </div>
+            <div id="styles-list"><div class="empty">Loading…</div></div>
+          </section>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="trending.js"></script>
+</body>
+</html>
