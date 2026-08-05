@@ -137,6 +137,10 @@ export async function api(path, options = {}) {
     throw new Error("unauthorized");
   }
   const data = await res.json().catch(() => ({}));
+  if (res.status === 403 && data.error === "shortform_locked") {
+    location.href = "/gate";
+    throw new Error("locked");
+  }
   if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
   return data;
 }
@@ -201,6 +205,9 @@ const NAV = [
   { section: "Setup" },
   { href: "accounts.html", icon: "accounts", label: "Accounts", badge: "accounts" },
   { href: "settings.html", icon: "settings", label: "Settings" },
+  { section: "Tools" },
+  { href: "/ugc/", icon: "sparkle", label: "UGC Studio" },
+  { href: "/hub", icon: "dashboard", label: "All tools" },
 ];
 
 export function initShell({ title, crumb = null, actions = "" }) {

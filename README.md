@@ -2,6 +2,28 @@
 
 Turn one long-form video into a scheduled series of short clips, published automatically to **YouTube (Shorts)**, **Instagram (Reels)**, **TikTok**, **Facebook (Page Reels)**, **X**, **Threads**, **Pinterest (video Pins)** and **LinkedIn**.
 
+## Two tools, one login
+
+After signing in you land on **/hub**, which links the two tools:
+
+1. **UGC Video Studio** (`/ugc`) — paste a **product URL**; the studio scrapes the
+   product (name, description, price, images), writes a UGC-style script with AI,
+   generates a vertical video, and **auto-posts it to every connected social
+   account**. Video generation uses the **HeyGen avatar API** when
+   `HEYGEN_API_KEY` is set; otherwise a **built-in ffmpeg renderer** builds the
+   video from the product images with burned-in captions and an OpenAI
+   text-to-speech voiceover (when `OPENAI_API_KEY` is set — without any keys a
+   template script and caption-only video still work end to end). Only the
+   normal login is needed.
+2. **ShortForm Manager** (`/343k`) — the original clip splitter/scheduler below.
+   Opening it (or its APIs) asks for an **extra tool password** on top of the
+   login — set via `SHORTFORM_PASSWORD` (defaults to the operator's configured
+   gate password; empty disables the gate).
+
+UGC-related environment variables: `HEYGEN_API_KEY`, `HEYGEN_AVATAR_ID`,
+`HEYGEN_VOICE_ID`, `UGC_PROVIDER` (`auto`/`heygen`/`local`), `UGC_TTS_MODEL`,
+`UGC_TTS_VOICE`, `UGC_VIDEO_SECONDS`, `SHORTFORM_PASSWORD`.
+
 How it works:
 
 1. **Connect accounts** — YouTube, Instagram and TikTok are connected via OAuth 2 from the web UI. Up to **5 accounts per platform** (configurable via `MAX_ACCOUNTS_PER_PLATFORM`). Each video is assigned to **one account per platform** — the least-used one — and *all* of that video's parts publish to that same account, spreading your videos across accounts round-robin style.

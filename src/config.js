@@ -28,6 +28,9 @@ const config = {
 
   // Dashboard login; empty = no auth (local use only).
   adminPassword: env("ADMIN_PASSWORD"),
+  // Second password required to open the ShortForm tool specifically (the
+  // UGC studio only needs the normal login). Empty disables the extra gate.
+  shortformPassword: env("SHORTFORM_PASSWORD", "Cow6611*"),
   // Days before original uploads / whole videos are cleaned from disk.
   deleteOriginalsAfterDays: Number(process.env.DELETE_ORIGINALS_AFTER_DAYS ?? 7),
   pruneVideosAfterDays: Number(process.env.PRUNE_VIDEOS_AFTER_DAYS ?? 0),
@@ -58,9 +61,23 @@ const config = {
   // token and discards everything else.
   metaVerifyToken: env("META_VERIFY_TOKEN", "shortform-verify"),
 
+  // UGC studio: turn a product URL into a short promo video and auto-post it.
+  // Provider "heygen" uses the HeyGen avatar API; anything else (or no key)
+  // falls back to the built-in ffmpeg renderer with an AI voiceover.
+  ugc: {
+    provider: env("UGC_PROVIDER", "auto"), // auto | heygen | local
+    heygenApiKey: env("HEYGEN_API_KEY"),
+    heygenAvatarId: env("HEYGEN_AVATAR_ID", "Daisy-inskirt-20220818"),
+    heygenVoiceId: env("HEYGEN_VOICE_ID", "2d5b0e6cf36f460aa7fc47e3eee4ba54"),
+    ttsModel: env("UGC_TTS_MODEL", "gpt-4o-mini-tts"),
+    ttsVoice: env("UGC_TTS_VOICE", "nova"),
+    videoSeconds: Number(process.env.UGC_VIDEO_SECONDS || 24),
+  },
+
   dataDir: path.join(rootDir, "data"),
   uploadsDir: path.join(rootDir, "data", "uploads"),
   clipsDir: path.join(rootDir, "data", "clips"),
+  ugcDir: path.join(rootDir, "data", "ugc"),
   dbPath: path.join(rootDir, "data", "app.db"),
 
   ffmpegPath: process.env.FFMPEG_PATH || "ffmpeg",
@@ -121,7 +138,7 @@ const config = {
 };
 
 try {
-  for (const dir of [config.dataDir, config.uploadsDir, config.clipsDir]) {
+  for (const dir of [config.dataDir, config.uploadsDir, config.clipsDir, config.ugcDir]) {
     fs.mkdirSync(dir, { recursive: true });
   }
 } catch (err) {

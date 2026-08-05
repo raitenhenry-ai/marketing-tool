@@ -86,6 +86,32 @@ CREATE TABLE IF NOT EXISTS users (
   role TEXT NOT NULL DEFAULT 'member',
   created_at BIGINT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS ugc_jobs (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  product_url TEXT NOT NULL,
+  product_json TEXT,
+  settings_json TEXT,
+  script_json TEXT,
+  status TEXT NOT NULL DEFAULT 'queued',
+  error TEXT,
+  provider TEXT,
+  video_filename TEXT,
+  auto_post INTEGER NOT NULL DEFAULT 1,
+  created_at BIGINT NOT NULL,
+  updated_at BIGINT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS ugc_posts (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  job_id BIGINT NOT NULL REFERENCES ugc_jobs(id) ON DELETE CASCADE,
+  account_id BIGINT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  platform TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  error TEXT,
+  platform_video_id TEXT,
+  public_post_id TEXT,
+  posted_at BIGINT,
+  UNIQUE (job_id, account_id)
+);
 `;
 
 if (config.databaseUrl) {
@@ -291,5 +317,36 @@ CREATE TABLE IF NOT EXISTS uploads (
       created_at INTEGER NOT NULL
     )`);
     db.pragma("user_version = 7");
+  }
+
+  // v7 -> v8: UGC studio (product URL -> generated video -> auto-post).
+  if (version < 8) {
+    db.exec(`CREATE TABLE IF NOT EXISTS ugc_jobs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_url TEXT NOT NULL,
+      product_json TEXT,
+      settings_json TEXT,
+      script_json TEXT,
+      status TEXT NOT NULL DEFAULT 'queued',
+      error TEXT,
+      provider TEXT,
+      video_filename TEXT,
+      auto_post INTEGER NOT NULL DEFAULT 1,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS ugc_posts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      job_id INTEGER NOT NULL REFERENCES ugc_jobs(id) ON DELETE CASCADE,
+      account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      platform TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      error TEXT,
+      platform_video_id TEXT,
+      public_post_id TEXT,
+      posted_at INTEGER,
+      UNIQUE (job_id, account_id)
+    )`);
+    db.pragma("user_version = 8");
   }
 }

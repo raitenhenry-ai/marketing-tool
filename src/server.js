@@ -5,11 +5,14 @@ import config from "./config.js";
 import { q1, closeDb, dbKind } from "./db.js";
 import authRoutes from "./routes/auth.js";
 import apiRoutes from "./routes/api.js";
+import ugcRoutes from "./routes/ugc.js";
 import { registerAuthRoutes, authMiddleware, authEnabled } from "./auth.js";
+import { registerGateRoutes, gateMiddleware } from "./gate.js";
 import { startScheduler } from "./scheduler.js";
 import { startCleanup } from "./cleanup.js";
 import { startMetrics } from "./metrics.js";
 import { recoverStuckVideos, queueLength } from "./processing.js";
+import { recoverStuckUgcJobs, ugcQueueLength } from "./ugc/pipeline.js";
 
 // Timestamped logs.
 for (const level of ["log", "warn", "error"]) {
@@ -43,6 +46,7 @@ app.get("/healthz", async (req, res) => {
       database: dbKind,
       uptimeSeconds: Math.round(process.uptime()),
       processingQueue: queueLength(),
+      ugcQueue: ugcQueueLength(),
       connectedAccounts: accounts,
       // Which Facebook login flavor the RUNNING process will use - proves
       // whether FACEBOOK_CONFIG_ID actually reached this deployment.
@@ -55,6 +59,9 @@ app.get("/healthz", async (req, res) => {
   }
 });
 app.use("/clips", express.static(config.clipsDir));
+// Generated UGC videos must also be publicly fetchable (Instagram & co pull
+// the video from a URL when publishing).
+app.use("/ugc-media", express.static(config.ugcDir));
 
 // Meta (Instagram/Facebook/Threads) webhook endpoint. The app dashboards
 // insist on a callback URL + verify token; we answer the GET handshake and
@@ -82,10 +89,22 @@ app.get(["/privacy", "/privacy/"], (req, res) => res.sendFile(path.join(publicDi
 // Public product landing page (also what platform app reviews see).
 app.get("/", (req, res) => res.sendFile(path.join(publicDir, "landing.html")));
 
-// The dashboard lives under /343k; everything below sits behind the login
-// when ADMIN_PASSWORD is set.
+// Everything below sits behind the login when ADMIN_PASSWORD is set. Two
+// tools live behind it:
+//   /hub  - chooser page listing both tools
+//   /ugc  - UGC video studio (login only)
+//   /343k - ShortForm manager (+its /api and /auth), additionally locked
+//           behind the tool password (see gate.js)
 registerAuthRoutes(app);
 app.use(authMiddleware);
+
+app.get(["/hub", "/hub/"], (req, res) => res.sendFile(path.join(publicDir, "hub.html")));
+
+app.use("/ugc/api", ugcRoutes);
+app.use("/ugc", express.static(path.join(publicDir, "ugc")));
+
+registerGateRoutes(app);
+app.use(gateMiddleware);
 app.use("/343k", express.static(publicDir));
 app.use("/auth", authRoutes);
 app.use("/api", apiRoutes);
@@ -104,6 +123,11 @@ const server = app.listen(config.port, async () => {
     return 0;
   });
   if (recovered) console.log(`[startup] recovered ${recovered} interrupted video(s)`);
+  const recoveredUgc = await recoverStuckUgcJobs().catch((e) => {
+    console.error("[startup] ugc recovery failed:", e);
+    return 0;
+  });
+  if (recoveredUgc) console.log(`[startup] recovered ${recoveredUgc} interrupted UGC job(s)`);
   startScheduler();
   startCleanup();
   startMetrics();

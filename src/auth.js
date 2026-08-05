@@ -182,13 +182,13 @@ function pendingPage(email) {
 export function registerAuthRoutes(app) {
   app.get("/login", (req, res) => {
     const session = sessionOf(req);
-    if (!authEnabled() || session?.role === "operator") return res.redirect("/343k/");
+    if (!authEnabled() || session?.role === "operator") return res.redirect("/hub");
     if (session) return res.redirect("/pending");
     res.send(loginPage(req.query.error));
   });
 
   app.post("/login", async (req, res) => {
-    if (!authEnabled()) return res.redirect("/343k/");
+    if (!authEnabled()) return res.redirect("/hub");
     if (rateLimited(req, res)) return;
 
     const email = String(req.body.email || "").trim().toLowerCase();
@@ -199,7 +199,7 @@ export function registerAuthRoutes(app) {
     if (safeEqual(password, config.adminPassword)) {
       attempts.delete(req.socket.remoteAddress || "unknown");
       startSession(res, "operator", email);
-      return res.redirect("/343k/");
+      return res.redirect("/hub");
     }
 
     const user = await q1("SELECT * FROM users WHERE email = ?", [email]).catch(() => null);
@@ -210,12 +210,12 @@ export function registerAuthRoutes(app) {
 
     attempts.delete(req.socket.remoteAddress || "unknown");
     startSession(res, user.role === "operator" ? "operator" : "member", email);
-    res.redirect(user.role === "operator" ? "/343k/" : "/pending");
+    res.redirect(user.role === "operator" ? "/hub" : "/pending");
   });
 
   app.get("/signup", (req, res) => {
     const session = sessionOf(req);
-    if (session?.role === "operator") return res.redirect("/343k/");
+    if (session?.role === "operator") return res.redirect("/hub");
     if (session) return res.redirect("/pending");
     res.send(signupPage(req.query.error));
   });
@@ -243,7 +243,7 @@ export function registerAuthRoutes(app) {
   app.get("/pending", (req, res) => {
     const session = sessionOf(req);
     if (!session) return res.redirect("/login");
-    if (session.role === "operator") return res.redirect("/343k/");
+    if (session.role === "operator") return res.redirect("/hub");
     res.send(pendingPage(session.email));
   });
 
