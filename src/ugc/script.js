@@ -16,6 +16,19 @@ export function toneOptions() {
   return Object.keys(TONES);
 }
 
+// Video style angles - the "trending styles" the studio UI offers.
+const STYLES = {
+  product_pov: "Show the product being used in real everyday situations (product POV angle).",
+  grwm: "Frame it as a get-ready-with-me routine where the product is the star step.",
+  unboxing: "Frame it as a satisfying unboxing with a reveal moment.",
+  before_after: "Lean on the before/after transformation the product delivers.",
+  demo: "A quick, punchy demo of exactly how the product works.",
+};
+
+export function styleOptions() {
+  return Object.keys(STYLES);
+}
+
 export async function generateScript(product, settings = {}) {
   const tone = TONES[settings.tone] ? settings.tone : "casual";
   if (!config.openaiApiKey) return templateScript(product, tone);
@@ -45,7 +58,9 @@ export async function generateScript(product, settings = {}) {
             "caption: 1-2 sentences for the post text, may include 1-2 emoji. " +
             "hashtags: 6-10 lowercase hashtags starting with #, mixing product-specific and " +
             "discovery tags (#tiktokmademebuyit #fyp style). " +
-            `Overall voice: ${TONES[tone]}. Never invent specs, medical claims or fake discounts.`,
+            `Overall voice: ${TONES[tone]}. ` +
+            (STYLES[settings.style] ? `Video angle: ${STYLES[settings.style]} ` : "") +
+            "Never invent specs, medical claims or fake discounts.",
         },
         {
           role: "user",

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>UGC Video Studio</title>
-  <script>document.documentElement.dataset.theme = localStorage.getItem("ugc-theme") || "dark";</script>
+  <script>document.documentElement.dataset.theme = localStorage.getItem("ugc-theme") || "light";</script>
   <link rel="stylesheet" href="ugc.css" />
 </head>
 <body>
@@ -13,96 +13,182 @@
     <aside class="sidebar">
       <div class="brand">
         <div class="brand-mark">✨</div>
-        <div>
-          <div class="brand-name">UGC Studio</div>
-          <div class="brand-sub">product → video → posted</div>
-        </div>
+        <div class="brand-name">UGC Studio</div>
       </div>
 
+      <button class="create-btn" id="create-open">＋ &nbsp;Create Content</button>
+
       <nav class="nav">
-        <div class="nav-section">Create</div>
-        <a class="nav-item active" href="#create">＋ New video</a>
-        <a class="nav-item" href="#videos">🎞 My videos</a>
-        <div class="nav-section">Workspace</div>
-        <a class="nav-item" href="/hub">⌂ All tools</a>
-        <a class="nav-item" href="/343k/">🔒 ShortForm manager</a>
-        <a class="nav-item" href="/343k/accounts.html">👥 Connected accounts</a>
+        <a class="nav-item active" href="#top" data-nav>
+          <span class="ni">▦</span> Dashboard
+        </a>
+        <a class="nav-item" href="#styles" data-nav>
+          <span class="ni">🔥</span> Trending Styles
+        </a>
+        <a class="nav-item" href="#recent" data-nav>
+          <span class="ni">🗂</span> Content
+        </a>
+        <a class="nav-item" href="#overview" data-nav>
+          <span class="ni">📈</span> Analytics
+        </a>
+        <a class="nav-item" href="/343k/accounts.html">
+          <span class="ni">👥</span> Accounts
+        </a>
+        <div class="nav-sep"></div>
+        <a class="nav-item" href="/343k/">
+          <span class="ni">🔒</span> ShortForm Manager
+        </a>
+        <a class="nav-item" href="/hub">
+          <span class="ni">⌂</span> All Tools
+        </a>
       </nav>
 
-      <div class="sidebar-foot">
-        <div class="foot-stat" id="foot-accounts">— accounts connected</div>
-        <button class="ghost-btn" id="logout-btn" title="Sign out">Sign out</button>
+      <div class="plan-card">
+        <div class="plan-title">🔗 Connections</div>
+        <div class="plan-sub" id="plan-sub">— platforms connected</div>
+        <div class="plan-bar"><div class="plan-fill" id="plan-fill"></div></div>
+        <a class="plan-link" href="/343k/accounts.html">Connect accounts</a>
+      </div>
+
+      <div class="user-card">
+        <div class="avatar">U</div>
+        <div class="user-meta">
+          <div class="user-name">Signed in</div>
+          <div class="user-sub">operator</div>
+        </div>
+        <button class="user-out" id="logout-btn" title="Sign out">⏻</button>
       </div>
     </aside>
 
-    <div class="main">
+    <div class="main" id="top">
       <header class="topbar">
         <div>
-          <h1 id="greeting">UGC Video Studio</h1>
-          <p class="topbar-sub">Paste a product link — we scrape it, write the script,
-             generate the video and post it everywhere.</p>
+          <h1 id="greeting">Good morning 👋</h1>
+          <p class="topbar-sub">Here's what's happening with your content today.</p>
         </div>
-        <button class="icon-btn" id="theme-btn" title="Toggle theme">◐</button>
+        <div class="topbar-right">
+          <div class="chip" id="date-chip">📅 —</div>
+          <button class="icon-btn" id="theme-btn" title="Toggle light/dark theme">◐</button>
+        </div>
       </header>
 
-      <main class="content">
+      <div class="layout">
+        <main class="content">
 
-        <div class="stats" id="stat-tiles">
-          <div class="stat"><div class="stat-label">Videos created</div><div class="stat-value" data-stat="videosReady">—</div></div>
-          <div class="stat"><div class="stat-label">Posts published</div><div class="stat-value" data-stat="posted">—</div></div>
-          <div class="stat"><div class="stat-label">Connected accounts</div><div class="stat-value" data-stat="connectedAccounts">—</div></div>
-          <div class="stat"><div class="stat-label">Failed posts</div><div class="stat-value" data-stat="failedPosts">—</div></div>
-        </div>
-
-        <section class="card create-card" id="create">
-          <div class="card-title">Create a UGC video</div>
-
-          <form id="create-form">
-            <label class="field-label" for="product-url">Product URL</label>
-            <div class="url-row">
-              <input id="product-url" type="url" placeholder="https://yourstore.com/products/awesome-thing" required />
-              <button type="submit" class="btn btn-primary" id="generate-btn">✨ Generate & post</button>
+          <div class="stats" id="stat-tiles">
+            <div class="stat">
+              <div class="stat-head"><span class="stat-ico blue">🎬</span> Videos Created</div>
+              <div class="stat-value" data-stat="videosReady">—</div>
+              <div class="stat-sub">generated in the studio</div>
+              <svg class="spark blue" viewBox="0 0 100 26" preserveAspectRatio="none"><polyline points="0,20 12,16 24,18 36,12 48,15 60,9 72,12 84,6 100,8"/></svg>
             </div>
+            <div class="stat">
+              <div class="stat-head"><span class="stat-ico purple">🚀</span> Posts Published</div>
+              <div class="stat-value" data-stat="posted">—</div>
+              <div class="stat-sub">across all platforms</div>
+              <svg class="spark purple" viewBox="0 0 100 26" preserveAspectRatio="none"><polyline points="0,22 14,18 28,19 42,13 56,16 70,10 84,12 100,5"/></svg>
+            </div>
+            <div class="stat">
+              <div class="stat-head"><span class="stat-ico blue">👥</span> Connected Accounts</div>
+              <div class="stat-value" data-stat="connectedAccounts">—</div>
+              <div class="stat-sub">ready to auto-post</div>
+              <svg class="spark blue" viewBox="0 0 100 26" preserveAspectRatio="none"><polyline points="0,18 16,18 32,14 48,14 64,10 80,10 100,7"/></svg>
+            </div>
+            <div class="stat">
+              <div class="stat-head"><span class="stat-ico green">✅</span> Success Rate</div>
+              <div class="stat-value" data-stat="successRate">—</div>
+              <div class="stat-sub" data-stat-sub="failedPosts">no failed posts</div>
+              <svg class="spark green" viewBox="0 0 100 26" preserveAspectRatio="none"><polyline points="0,21 15,17 30,18 45,12 60,14 75,8 90,10 100,4"/></svg>
+            </div>
+          </div>
 
-            <div class="options">
-              <div class="opt">
-                <label class="field-label" for="tone">Tone</label>
-                <select id="tone">
-                  <option value="casual">Casual friend</option>
-                  <option value="excited">Hyped & excited</option>
-                  <option value="professional">Pro reviewer</option>
-                  <option value="storytelling">Storytelling</option>
-                </select>
+          <section class="card" id="styles">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Trending Video Styles</div>
+                <div class="card-sub">Pick the angle for your next video</div>
               </div>
-              <div class="opt">
-                <label class="field-label">Post to</label>
-                <div class="platform-picks" id="platform-picks"></div>
-              </div>
-              <div class="opt">
-                <label class="field-label" for="auto-post">Publishing</label>
-                <label class="toggle">
-                  <input type="checkbox" id="auto-post" checked />
-                  <span>Auto-post to all selected socials when the video is ready</span>
-                </label>
+              <div class="tabs">
+                <button class="tab on">TikTok</button>
+                <button class="tab">Instagram</button>
               </div>
             </div>
+            <div class="styles-row" id="styles-row"></div>
+          </section>
 
-            <div class="gen-hint" id="gen-hint"></div>
-          </form>
-        </section>
+          <section class="card" id="recent">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Recent Content</div>
+                <div class="card-sub" id="jobs-hint"></div>
+              </div>
+              <button class="btn btn-primary btn-sm" id="create-open-2">＋ Create</button>
+            </div>
+            <div class="jobs-row" id="jobs">
+              <div class="empty">Loading…</div>
+            </div>
+          </section>
 
-        <section id="videos">
-          <div class="section-head">
-            <h2>My videos</h2>
-            <span class="hint" id="jobs-hint"></span>
-          </div>
-          <div id="jobs" class="jobs">
-            <div class="empty">Loading…</div>
-          </div>
-        </section>
+        </main>
 
-      </main>
+        <aside class="rail" id="overview">
+          <section class="card">
+            <div class="card-head">
+              <div class="card-title">Analytics Overview</div>
+            </div>
+            <div id="platform-overview"><div class="empty small">Loading…</div></div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <div class="card-title">Top Performing Content</div>
+            </div>
+            <div id="top-content"><div class="empty small">Nothing posted yet</div></div>
+          </section>
+        </aside>
+      </div>
     </div>
+  </div>
+
+  <!-- Create Content modal -->
+  <div class="modal-backdrop" id="create-modal" hidden>
+    <form class="modal" id="create-form">
+      <div class="modal-head">
+        <h2>Create a UGC video</h2>
+        <button type="button" class="icon-btn" id="create-close">✕</button>
+      </div>
+
+      <label class="field-label" for="product-url">Product URL</label>
+      <input id="product-url" type="url" placeholder="https://yourstore.com/products/awesome-thing" required />
+
+      <div class="modal-grid">
+        <div>
+          <label class="field-label" for="tone">Tone</label>
+          <select id="tone">
+            <option value="casual">Casual friend</option>
+            <option value="excited">Hyped &amp; excited</option>
+            <option value="professional">Pro reviewer</option>
+            <option value="storytelling">Storytelling</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label">Style</label>
+          <div class="chip on" id="style-chip">Product POV</div>
+        </div>
+      </div>
+
+      <label class="field-label">Post to</label>
+      <div class="platform-picks" id="platform-picks"></div>
+
+      <label class="toggle">
+        <input type="checkbox" id="auto-post" checked />
+        <span>Auto-post to all selected socials when the video is ready</span>
+      </label>
+
+      <div class="gen-hint" id="gen-hint"></div>
+
+      <button type="submit" class="btn btn-primary btn-block" id="generate-btn">✨ Generate &amp; post</button>
+    </form>
   </div>
 
   <script type="module" src="ugc.js"></script>

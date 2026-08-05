@@ -3,7 +3,7 @@ import config from "../config.js";
 import { q, q1, run as dbRun } from "../db.js";
 import { platforms } from "../scheduler.js";
 import { postUrl } from "../postUrl.js";
-import { toneOptions } from "../ugc/script.js";
+import { toneOptions, styleOptions } from "../ugc/script.js";
 import { heygenConfigured } from "../ugc/heygen.js";
 import {
   enqueueUgcJob, postJob, pickProvider, ugcQueueLength, deleteJobFiles,
@@ -106,6 +106,7 @@ router.post("/jobs", wrap(async (req, res) => {
     : [];
   const settings = {
     tone: toneOptions().includes(req.body.tone) ? req.body.tone : "casual",
+    style: styleOptions().includes(req.body.style) ? req.body.style : "product_pov",
     platforms: wanted,
     provider: ["heygen", "local", "auto"].includes(req.body.provider) ? req.body.provider : undefined,
     voice: typeof req.body.voice === "string" ? req.body.voice.slice(0, 40) : undefined,
