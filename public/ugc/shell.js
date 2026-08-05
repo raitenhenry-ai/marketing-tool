@@ -67,12 +67,29 @@ export const PLATFORMS = {
   linkedin: ["LinkedIn", icons.linkedin],
 };
 
+// UGC-style photos (Unsplash CDN, free license). Every spot that shows one
+// keeps its gradient+icon underneath and drops the <img> on error, so a
+// blocked/dead URL just falls back to the flat look.
+const U = (id) => `https://images.unsplash.com/${id}?w=480&h=640&fit=crop&q=75&auto=format`;
+export const PHOTOS = {
+  product_pov: U("photo-1556228720-195a672e8a03"),
+  grwm: U("photo-1522335789203-aabd1fc54bc9"),
+  unboxing: U("photo-1607082348824-0a96f2a4b9da"),
+  before_after: U("photo-1570172619644-dfd03ed5d881"),
+  demo: U("photo-1571781926291-c477ebfd024b"),
+  generic: U("photo-1596462502278-27bfdc403348"),
+};
+
+// Shared fallback-safe photo tag.
+export const photoImg = (src, cls = "photo") =>
+  src ? `<img class="${cls}" src="${src}" alt="" loading="lazy" onerror="this.remove()">` : "";
+
 export const STYLES = [
-  { key: "product_pov", name: "Product POV", desc: "Show the product in real life situations.", tag: ["eng", "High Engagement"], icon: "camera", g: "g1", views: "12.4M", sparkline: [4, 6, 5, 8, 7, 10, 9, 12], long: "The camera is the customer's eyes: the product in hand, on the desk, in the bag - shot like a friend showing you what they bought. Works everywhere and converts on 'relatable' energy." },
-  { key: "grwm", name: "Get Ready With Me", desc: "Include your product in your routine.", tag: ["eng", "High Engagement"], icon: "mirror", g: "g2", views: "8.7M", sparkline: [5, 4, 6, 6, 8, 7, 9, 10], long: "The product slots naturally into a morning/evening routine. Viewers stay for the routine, discover the product mid-flow - the classic soft-sell format." },
-  { key: "unboxing", name: "Unboxing", desc: "Satisfying unboxing with reveal.", tag: ["views", "High Views"], icon: "box", g: "g3", views: "6.1M", sparkline: [3, 5, 4, 7, 6, 8, 7, 9], long: "Package to product in one satisfying arc, with the reveal as the payoff moment. Great for products with strong packaging or a wow first impression." },
-  { key: "before_after", name: "Before / After", desc: "Show transformation or results.", tag: ["conv", "High Conversion"], icon: "wand", g: "g4", views: "5.6M", sparkline: [4, 3, 5, 6, 5, 7, 8, 8], long: "Opens on the problem, closes on the result. The strongest converting angle when the product produces a visible difference." },
-  { key: "demo", name: "Product Demo", desc: "Quick demo of how it works.", tag: ["conv", "High Conversion"], icon: "play", g: "g5", views: "4.2M", sparkline: [2, 4, 3, 5, 6, 5, 7, 8], long: "Fast, no-fluff walkthrough of what it does and why that's useful. Ideal for gadgets, tools and anything with a clever mechanism." },
+  { key: "product_pov", name: "Product POV", desc: "Show the product in real life situations.", tag: ["eng", "High Engagement"], icon: "camera", g: "g1", views: "12.4M", sparkline: [4, 6, 5, 8, 7, 10, 9, 12], photo: PHOTOS.product_pov, long: "The camera is the customer's eyes: the product in hand, on the desk, in the bag - shot like a friend showing you what they bought. Works everywhere and converts on 'relatable' energy." },
+  { key: "grwm", name: "Get Ready With Me", desc: "Include your product in your routine.", tag: ["eng", "High Engagement"], icon: "mirror", g: "g2", views: "8.7M", sparkline: [5, 4, 6, 6, 8, 7, 9, 10], photo: PHOTOS.grwm, long: "The product slots naturally into a morning/evening routine. Viewers stay for the routine, discover the product mid-flow - the classic soft-sell format." },
+  { key: "unboxing", name: "Unboxing", desc: "Satisfying unboxing with reveal.", tag: ["views", "High Views"], icon: "box", g: "g3", views: "6.1M", sparkline: [3, 5, 4, 7, 6, 8, 7, 9], photo: PHOTOS.unboxing, long: "Package to product in one satisfying arc, with the reveal as the payoff moment. Great for products with strong packaging or a wow first impression." },
+  { key: "before_after", name: "Before / After", desc: "Show transformation or results.", tag: ["conv", "High Conversion"], icon: "wand", g: "g4", views: "5.6M", sparkline: [4, 3, 5, 6, 5, 7, 8, 8], photo: PHOTOS.before_after, long: "Opens on the problem, closes on the result. The strongest converting angle when the product produces a visible difference." },
+  { key: "demo", name: "Product Demo", desc: "Quick demo of how it works.", tag: ["conv", "High Conversion"], icon: "play", g: "g5", views: "4.2M", sparkline: [2, 4, 3, 5, 6, 5, 7, 8], photo: PHOTOS.demo, long: "Fast, no-fluff walkthrough of what it does and why that's useful. Ideal for gadgets, tools and anything with a clever mechanism." },
 ];
 
 export const ACTIVE_STATES = ["queued", "scraping", "scripting", "rendering", "posting"];
@@ -394,11 +411,12 @@ export function jobCard(job) {
   const img = p?.images?.[0];
   const [label, cls] = STATE_LABELS[job.status] || [job.status, ""];
 
+  const styledPhoto = PHOTOS[job.settings?.style] || PHOTOS.generic;
   const media = job.videoUrl
     ? `<video src="${esc(job.videoUrl)}" controls playsinline preload="metadata"></video>`
     : img
       ? `<img src="${esc(img)}" alt="" loading="lazy">`
-      : `<div class="placeholder">${icons.film}</div>`;
+      : `<div class="placeholder">${icons.film}${photoImg(styledPhoto)}</div>`;
 
   const postChips = job.posts.slice(0, 4).map((post) => {
     const pc = post.status === "done" ? "ok" : post.status === "failed" ? "err" : "";

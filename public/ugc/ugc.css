@@ -267,6 +267,10 @@ svg { display: inline-block; vertical-align: middle; }
   position: relative; overflow: hidden; color: rgba(20, 26, 41, 0.45);
 }
 .style-thumb > svg { width: 34px; height: 34px; }
+.style-thumb img.photo {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+}
+.style-rank, .style-views, .style-check { z-index: 2; }
 .style-thumb.g1 { background: linear-gradient(150deg, #dbe7ff, #eadcff); }
 .style-thumb.g2 { background: linear-gradient(150deg, #ffe3d6, #ffd6ea); }
 .style-thumb.g3 { background: linear-gradient(150deg, #dff5e8, #d6f0ff); }
@@ -332,9 +336,14 @@ svg { display: inline-block; vertical-align: middle; }
 .job-thumb video, .job-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .job-thumb .placeholder {
   width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
-  color: var(--muted);
+  color: var(--muted); position: relative;
 }
 .job-thumb .placeholder svg { width: 30px; height: 30px; }
+.job-thumb .placeholder img.photo {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  filter: saturate(0.85); opacity: 0.9;
+}
+.job-state { z-index: 2; }
 .job-state {
   position: absolute; top: 8px; left: 8px; z-index: 1;
   font-size: 0.66rem; font-weight: 700; border-radius: 7px; padding: 4px 8px;

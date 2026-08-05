@@ -2,7 +2,7 @@
    how often you've used it, and a create shortcut per style. */
 
 import {
-  $, $$, icons, STYLES, api, toast, initShell, openCreateModal, spark,
+  $, $$, icons, STYLES, photoImg, api, toast, initShell, openCreateModal, spark,
 } from "./shell.js";
 
 initShell({
@@ -15,6 +15,7 @@ function render(usage) {
     <div class="style-full">
       <div class="style-thumb ${s.g}" style="position:relative">
         ${icons[s.icon]}
+        ${photoImg(s.photo)}
         <span class="style-rank" style="top:8px;left:8px">#${i + 1}</span>
         <span class="style-views">${icons.play} ${s.views}</span>
       </div>

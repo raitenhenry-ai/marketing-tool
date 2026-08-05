@@ -2,7 +2,7 @@
    trending style picker, recent content, and the analytics rail. */
 
 import {
-  $, $$, icons, PLATFORMS, STYLES, ACTIVE_STATES, esc, fmtDay,
+  $, $$, icons, PLATFORMS, STYLES, PHOTOS, photoImg, ACTIVE_STATES, esc, fmtDay,
   api, toast, getOverview, initShell, openCreateModal,
   jobCard, bindJobActions, spark, dailySeries, deltaChip,
 } from "./shell.js";
@@ -23,6 +23,7 @@ function renderStyles() {
       <span class="style-check">${icons.check}</span>
       <div class="style-thumb ${s.g}">
         ${icons[s.icon]}
+        ${photoImg(s.photo)}
         <span class="style-views">${icons.play} ${s.views}</span>
       </div>
       <div class="style-name">${s.name}</div>
@@ -174,7 +175,10 @@ function railTopContent(jobs) {
     const brand = PLATFORMS[done[0]?.platform]?.[1] || "";
     const inner = `
       <span class="top-rank">${i + 1}</span>
-      ${img ? `<img class="top-thumb" src="${esc(img)}" alt="" loading="lazy">` : `<div class="top-thumb"></div>`}
+      ${img
+        ? `<img class="top-thumb" src="${esc(img)}" alt="" loading="lazy">`
+        : `<img class="top-thumb" src="${PHOTOS[job.settings?.style] || PHOTOS.generic}" alt="" loading="lazy"
+              onerror="this.style.visibility='hidden'">`}
       <div class="top-meta">
         <div class="top-name"><span class="pico">${brand}</span>
           <span class="t">${esc(job.product?.name || job.productUrl)}</span></div>
