@@ -245,6 +245,10 @@ export function initShell({ title, crumb = null, actions = "" }) {
     <h1>${crumb ? `<a class="crumb" href="${crumb.href}">${esc(crumb.label)}</a> <span class="crumb">/</span> ` : ""}${esc(title)}</h1>
     <div class="topbar-actions">
       ${actions}
+      <a class="btn btn-ghost" href="/ugc/" title="Switch to the UGC Video Studio"
+         style="display:inline-flex;align-items:center;gap:7px;text-decoration:none">
+        ${icons.sparkle}<span>UGC Studio</span>
+      </a>
       <button class="icon-btn" id="theme-btn" title="Toggle light/dark theme"></button>
     </div>`;
 
