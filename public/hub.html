@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Your tools · Clint</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon-512.png">
   <script>document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";</script>
   <style>
     :root{--bg:#0a0d13;--surface:#10141c;--surface2:#151a26;--border:#222a3a;--text:#e7eaf1;--muted:#6d7688;--accent:#3b76f0}
@@ -13,8 +15,7 @@
          min-height:100vh;margin:0;display:flex;align-items:center;justify-content:center;padding:24px}
     .wrap{width:100%;max-width:860px}
     .brand{display:flex;align-items:center;gap:12px;margin-bottom:8px}
-    .mark{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#3b76f0,#7a4ff0);
-          display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px}
+    .mark{width:44px;height:44px;display:block}
     h1{font-size:1.5rem;margin:0}
     .sub{color:var(--muted);margin:0 0 28px;font-size:.95rem}
     .cards{display:grid;grid-template-columns:1fr 1fr;gap:18px}
@@ -40,7 +41,7 @@
 <body>
   <div class="wrap">
     <div class="brand">
-      <div class="mark">▶</div>
+      <img class="mark" src="/logo.svg" alt="">
       <h1>Your tools</h1>
     </div>
     <p class="sub">Pick where you want to work today.</p>

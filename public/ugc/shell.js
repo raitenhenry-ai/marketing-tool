@@ -213,7 +213,7 @@ export function initShell({ title, sub, greeting = false } = {}) {
   $("#sidebar").className = "sidebar";
   $("#sidebar").innerHTML = `
     <div class="brand">
-      <div class="brand-mark">${icons.sparkle}</div>
+      <div class="brand-mark"><img src="/logo.svg" alt=""></div>
       <div class="brand-name">UGC Studio</div>
     </div>
     <button class="create-btn" id="create-open">${icons.plus} Create Content</button>

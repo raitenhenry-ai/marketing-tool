@@ -65,6 +65,8 @@ function gatePage(error) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Unlock ShortForm · Clint</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-512.png">
 <script>document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";</script>
 <style>
   :root{--bg:#0a0d13;--surface:#10141c;--border:#222a3a;--text:#e7eaf1;--muted:#6d7688;--accent:#3b76f0;--err:#dd5959}
@@ -74,8 +76,7 @@ function gatePage(error) {
        display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:34px;width:100%;max-width:360px}
   .brand{display:flex;align-items:center;gap:10px;margin-bottom:20px;text-decoration:none;color:var(--text)}
-  .mark{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#3b76f0,#7a4ff0);
-        display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800}
+  .mark{width:38px;height:38px;display:block}
   .sub{font-size:11px;color:var(--muted)}
   h1{font-size:1.15rem;margin:0 0 6px}
   p{color:var(--muted);font-size:.9rem;line-height:1.5;margin:0 0 16px}
@@ -90,7 +91,7 @@ function gatePage(error) {
 </style></head><body>
 <form class="card" method="post" action="/gate">
   <a class="brand" href="/hub">
-    <div class="mark">▶</div>
+    <img class="mark" src="/logo.svg" alt="">
     <div><div style="font-weight:700">ShortForm Manager</div><div class="sub">restricted tool</div></div>
   </a>
   <h1>Tool password 🔒</h1>
