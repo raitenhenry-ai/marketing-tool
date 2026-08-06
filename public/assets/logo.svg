@@ -1,0 +1,20 @@
+<!-- viewBox is cropped to the artwork so the mark fills whatever box it's put in -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="21 10 62 70" width="100" height="100" role="img" aria-label="Clint">
+  <g fill="none" stroke="#C81FF0" stroke-width="3.4" stroke-linecap="round">
+    <!-- outer C -->
+    <path d="M 55.8 19.3 A 27.8 27.8 0 1 0 72.1 69.4" />
+    <!-- top link out to the loose node -->
+    <path d="M 55.8 19.3 Q 65.5 21.4 73.7 27.8" />
+    <!-- inner web strand: top node down to the lower-left node -->
+    <path d="M 55.8 19.3 Q 27.6 38.8 32.2 64.4" />
+    <!-- inner chord across the bottom -->
+    <path d="M 32.2 64.4 Q 53 77.5 72.1 69.4" />
+  </g>
+  <g fill="#C81FF0">
+    <circle cx="55.8" cy="19.3" r="6.3" />
+    <circle cx="73.7" cy="27.8" r="5.8" />
+    <circle cx="30.2" cy="32.6" r="5.8" />
+    <circle cx="32.2" cy="64.4" r="6.3" />
+    <circle cx="72.1" cy="69.4" r="6.0" />
+  </g>
+</svg>

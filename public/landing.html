@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Clint — turn long videos into short-form content everywhere</title>
   <meta name="description" content="Upload one long video. Clint clips it, captions it, titles it with AI, and publishes it to YouTube Shorts, Instagram Reels, TikTok, Facebook, X, Threads, Pinterest and LinkedIn on your schedule.">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon-512.png">
   <script>document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";</script>
   <style>
     :root{
@@ -25,8 +27,7 @@
         border-bottom:1px solid var(--border);z-index:10}
     .nav-in{display:flex;align-items:center;gap:26px;height:62px}
     .logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.05rem}
-    .mark{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent-2));
-          display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:.9rem}
+    .mark{width:34px;height:34px;display:block}
     .nav-links{display:flex;gap:22px;font-size:.92rem;color:var(--muted)}
     .nav-links a:hover{color:var(--text)}
     .spacer{flex:1}
@@ -97,7 +98,7 @@
 <body>
 
 <nav><div class="wrap nav-in">
-  <a class="logo" href="/"><span class="mark">▶</span> Clint</a>
+  <a class="logo" href="/"><img class="mark" src="/logo.svg" alt=""> Clint</a>
   <div class="nav-links">
     <a href="#features">Features</a>
     <a href="#how">How it works</a>

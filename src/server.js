@@ -83,6 +83,13 @@ const publicDir = path.join(config.rootDir, "public");
 // Domain-verification files (TikTok etc.) must be publicly reachable at the
 // site root: drop them in public/verification/ and they're served from /.
 app.use(express.static(path.join(publicDir, "verification")));
+// Brand assets at the root, for the pages served outside /343k (landing,
+// legal pages, sign-in) and for browsers that probe /favicon.*.
+const brandAsset = (file) => (req, res) => res.sendFile(path.join(publicDir, "assets", file));
+app.get(["/logo.svg", "/favicon.svg", "/favicon.ico"], brandAsset("logo.svg"));
+app.get(["/icon-512.png", "/apple-touch-icon.png", "/apple-touch-icon-precomposed.png"],
+  brandAsset("icon-512.png"));
+
 app.get(["/terms", "/terms/"], (req, res) => res.sendFile(path.join(publicDir, "terms.html")));
 app.get(["/privacy", "/privacy/"], (req, res) => res.sendFile(path.join(publicDir, "privacy.html")));
 

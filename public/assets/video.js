@@ -90,7 +90,7 @@ async function load() {
     return;
   }
 
-  document.title = `${v.title} · ShortForm Manager`;
+  document.title = `${v.title} · Clint`;
 
   const manual = v.publishMode !== "auto";
   const accounts = manual

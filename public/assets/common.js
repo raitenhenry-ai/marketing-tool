@@ -218,9 +218,9 @@ export function initShell({ title, crumb = null, actions = "" }) {
   sidebar.className = "sidebar";
   sidebar.innerHTML = `
     <div class="brand">
-      <div class="brand-mark">▶</div>
+      <div class="brand-mark"><img src="assets/logo.svg" alt=""></div>
       <div>
-        <div class="brand-name">ShortForm</div>
+        <div class="brand-name">Clint</div>
         <div class="brand-sub">content manager</div>
       </div>
     </div>
